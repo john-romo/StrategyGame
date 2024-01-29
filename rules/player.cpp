@@ -14,7 +14,7 @@ void Player::drain_stamina(u8 rate){
 	u8 temp = this->stamina;
 	this->stamina -= rate;
 
-	if(temp > rate) this->stamina = 0; 
+	if(this->stamina > temp) this->stamina = 0; 
 }
 
 void Player::recharge_stamina(u8 amount){
