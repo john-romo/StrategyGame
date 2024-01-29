@@ -1,0 +1,20 @@
+board.h: defaults.h headings.h piece.h
+defaults.h: definitions.h
+definitions.h:
+engineer.h: defaults.h piece.h board.h
+guard.h: defaults.h piece.h board.h
+headings.h: defaults.h
+king.h: defaults.h piece.h board.h
+main.h: 
+paratrooper.h: defaults.h piece.h board.h
+rifleman.h: defaults.h piece.h board.h
+scout.h: defaults.h piece.h board.h
+specops.h: defaults.h piece.h board.h
+searchlight.h: defaults.h piece.h board.h
+piece.h: defaults.h headings.h player.h
+pieceincludes.h: king.h guard.h rifleman.h specops.h paratrooper.h engineer.h scout.h searchlight.h
+player.h: defaults.h
+
+main.cpp		-> main.h board.h defaults.h pieceincludes.h player.h
+board.cpp		-> board.h pieceincludes.h
+piece.cpp		-> piece.h board.h pieceincludes.h
