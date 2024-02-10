@@ -7,7 +7,6 @@
 #include "defaults.h"
 #include "pieceincludes.h"
 #include "player.h"
-#include "event.h"
 
 int main(int, char**){
 	start_game();
