@@ -49,6 +49,29 @@ void Piece::unreveal(){
 }
 			
 
+bool Piece::remove_piece(){
+	Square* square = (Square*) this->square;
+	square->occupied = false;
+	square->piece = NULL;
+	this->square = NULL;
+	return true;
+}
+
+
+bool Piece::move(void* square){
+	Square* s = (Square*) square;
+	this->remove_piece();
+
+	s->piece = this;
+	s->occupied = true;
+	this->x = s->x;
+	this->y = s->y;
+	this->square = s;
+
+
+	return true;
+}
+
 bool place_piece(Piece* piece, u8 x, u8 y){
 	Square* s;
 	if(!(s = get_square(x, y))) return(false);

@@ -44,7 +44,8 @@ public:
 	bool take_damage();
 	bool die();
 
-	bool move();
+	bool move(void* end);
+	bool remove_piece();
 	bool target();
 	bool attack();
 	bool defend();
