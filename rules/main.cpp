@@ -7,46 +7,20 @@
 #include "defaults.h"
 #include "pieceincludes.h"
 #include "player.h"
+#include "event.h"
 
 int main(int, char**){
 	start_game();
 	
-	/*
-	Specops* s = new Specops(BLACK);
-	s->heading = SOUTHWEST;
-	place_piece(s, 18, 18);
-
-	King* k = new King(WHITE);
-	place_piece(k, 18, 4);
-
+	King* king = new King(WHITE);
+	place_piece(king, 20, 20);
 	Rifleman* r = new Rifleman(WHITE);
-	place_piece(r, 17, 5);
-	*/
+	place_piece(r, 13, 13);
 
-	/*
-	Searchlight* sl1 = new Searchlight(WHITE);
-	place_piece(sl1, 9, 0);
-	sl1->change_target(25, 30);
-
-	Searchlight* sl2 = new Searchlight(BLACK);
-	place_piece(sl2, 22, 30);
-	sl2->change_target(18, 18);
-
-	Searchlight* sl = new Searchlight(WHITE);
-	place_piece(sl, 15, 4);
-	sl->change_target(22, 17);
-
+	int worked = king->move(get_square(25,25));
 
 	reveal_pieces();
-	//print_visible_squares();
 	print_board();
-	*/
-
-	Square* start = new Square(1, 1);
-	Square* end = new Square(18, 27);
-	u8 distance = get_distance(start, end);
-	
-	printf("%d\n", distance);
 
 	end_game();
 }
@@ -56,7 +30,6 @@ void start_game(){
 	create_players();
 	create_headings();
 	create_board();
-
 
 }
 
