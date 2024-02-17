@@ -12,11 +12,13 @@ int main(int, char**){
 	start_game();
 	
 	King* king = new King(WHITE);
+
 	place_piece(king, 20, 20);
 	Rifleman* r = new Rifleman(WHITE);
 	place_piece(r, 13, 13);
 
-	int worked = king->move(get_square(25,25));
+	king->move(15,20);
+	printf("stamina: %d\n", king->player->stamina);
 
 	reveal_pieces();
 	print_board();
