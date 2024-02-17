@@ -5,15 +5,16 @@
 #define _PLAYER_H
 
 #include "defaults.h"
+#include <cstdio>
 
 class Player{
 public:
 	const bool color;
-	bool stamina;
+	i8 stamina;
 
 	Player(u8 _color);
 
-	void drain_stamina(u8 rate);
+	bool drain_stamina(u8 rate);
 	void recharge_stamina(u8 amount);
 };
 

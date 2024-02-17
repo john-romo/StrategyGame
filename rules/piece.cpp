@@ -38,8 +38,10 @@ Piece::Piece(
 	this->targetSquare = NULL;
 }
 
+
 void Piece::reveal(){}
 void Piece::change_target(u8 x, u8 y){}
+
 
 void Piece::unreveal(){
 	for(void* square : this->visibleSquares){
@@ -58,19 +60,38 @@ bool Piece::remove_piece(){
 }
 
 
-bool Piece::move(void* square){
-	Square* s = (Square*) square;
-	this->remove_piece();
+bool Piece::move(u8 x, u8 y){
+	Square* s = get_square(x, y);
+	if(!s) return false;
+	if(s->occupied) return false;
+	if(!this->check_move(x, y)) return false;
+	if(!this->player->drain_stamina(this->staminaDrain * this->get_distance(x, y)))
+		return false;
 
+	this->remove_piece();
 	s->piece = this;
 	s->occupied = true;
 	this->x = s->x;
 	this->y = s->y;
 	this->square = s;
 
-
 	return true;
 }
+
+
+bool Piece::check_move(u8 x, u8 y){
+	if(this->x == x) return true;
+	if(this->y == y) return true;
+	if(abs(this->x - x) == abs(this->y - y)) return true; 
+	return false;
+}
+
+
+u8 Piece::get_distance(u8 x, u8 y){
+	if(this->y == y) return(abs(this->x - x));
+	else return(abs(this->y - y));
+}
+
 
 bool place_piece(Piece* piece, u8 x, u8 y){
 	Square* s;
@@ -87,10 +108,12 @@ bool place_piece(Piece* piece, u8 x, u8 y){
 	return(true);
 }
 
+
 void push_piece(Piece* piece){
 	if(!piece->color) whitePieces.push_back(piece);
 	else blackPieces.push_back(piece);
 }
+
 
 void reveal_pieces(){
 	for(Piece* piece: whitePieces) piece->reveal();
@@ -102,5 +125,4 @@ void delete_pieces(){
 	for(Piece* piece : whitePieces) delete(piece);
 	for(Piece* piece : blackPieces) delete(piece);
 }
-
 

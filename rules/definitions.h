@@ -11,6 +11,8 @@
 #define u8 uint8_t
 #define i8 int8_t
 #define u16 uint16_t
+#define i16 int16_t
+#define ABS_MASK_8 0x7FFF
 
 #define EAST (headings[0])
 #define NORTHEAST (headings[1])

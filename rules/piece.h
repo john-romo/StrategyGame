@@ -44,7 +44,10 @@ public:
 	bool take_damage();
 	bool die();
 
-	bool move(void* end);
+	bool move(u8 x, u8 y);
+	bool check_move(u8 x, u8 y);
+	u8 get_distance(u8 x, u8 y);
+
 	bool remove_piece();
 	bool target();
 	bool attack();

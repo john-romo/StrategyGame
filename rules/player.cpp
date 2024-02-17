@@ -10,11 +10,11 @@ Player::Player(u8 _color) : color(_color){
 	this->stamina = STARTING_STAMINA;
 }
 
-void Player::drain_stamina(u8 rate){
-	u8 temp = this->stamina;
+bool Player::drain_stamina(u8 rate){
+	printf("HERE\n");
+	if(this->stamina < rate) return false;
 	this->stamina -= rate;
-
-	if(temp > rate) this->stamina = 0; 
+	return true;
 }
 
 void Player::recharge_stamina(u8 amount){
