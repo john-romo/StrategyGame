@@ -11,7 +11,6 @@ Player::Player(u8 _color) : color(_color){
 }
 
 bool Player::drain_stamina(u8 rate){
-	printf("HERE\n");
 	if(this->stamina < rate) return false;
 	this->stamina -= rate;
 	return true;
