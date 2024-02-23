@@ -1,6 +1,13 @@
 #include <iostream>
+#include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <list>
+
+#include "button2.hpp"
+#include "picture.hpp"
+
+using namespace std;
 
 // Hello World
 // g++ main.cpp
@@ -8,46 +15,75 @@
 // SDL2_image can be installed on linux using the following command:
 // sudo apt-get install libsdl2-image-dev
 
+enum menu {HOME, SETTINGS, SELECTION, GAME};
+enum setting { ON, OFF };
+
+int get_main_menu(SDL_Renderer* renderer, Picture bg, Picture settings_bg, menu* status, setting* fx, setting* music);
+int init_png_support();
+int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked);
+int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos, Picture bg, Button2 b1, setting* fx, setting* music, bool clicked);
+int get_selection_menu(menu* status, SDL_Renderer* renderer);
+Button2* create_button(SDL_Renderer* renderer, string bname, int rect_x, int rect_y, int rect_w, int rect_h);
+
 int main(){
+
     const int fps = 50;
     const int frame_delay = 1000 / fps;
-
     Uint64 frame_start_time = 0;
     int frame_duration = 0;
-
-    int water = 5;
-    std::cout << "Hello World" << water << "more junkk\n"; 
-
+ 
+    menu menu_stat = HOME;
+    menu* menu_status = &menu_stat;
+    setting sound = OFF;
+    setting* fx = &sound;
+    setting mus = OFF;
+    setting* music = &mus;
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_Window *window = SDL_CreateWindow("Cool Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
-
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
-
-    SDL_SetRenderDrawColor(renderer, 10, 100, 255, 255);
-
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     SDL_RenderPresent(renderer);
 
+    init_png_support();
 
     SDL_Event event;
 
+    Picture bg(renderer, "bg", 0, 0, 640, 480);
+    Picture settings_bg(renderer, "settingsbg", 0, 0, 640, 480);
+    Button2* b1 = create_button(renderer, "single_player", 100,430,132,30);
+    Button2* b2 = create_button(renderer, "settings", 300,430,92,30);
+    Button2* b3 = create_button(renderer, "quit", 500,430,60,30);
+    Button2* b4 = create_button(renderer, "back", 300,430,60,30);
+    Button2* b5 = create_button(renderer, "play", 0,430,60,30);
+    //Button2* b6 = create_button(renderer, "<", 0,0,640,480);
+    //Button2* b7 = create_button(renderer, ">", 0,0,640,480);
+    
+    SDL_Rect mouse_rect;
+    mouse_rect.x = 0;
+    mouse_rect.y = 0;
+    mouse_rect.w = 1;
+    mouse_rect.h = 1;
+    int mouse_x, mouse_y;
+    
     bool keep_running = true;
     bool left_pressed = false;
     bool right_pressed = false;
     bool left_pressed_prev = false;
     bool right_pressed_prev = false;
 
+    std::cout << "Hello World\n";
+
     while(keep_running){
+        //cout << mouse_x << endl;
+        //cout << mouse_y << endl;
 
         frame_start_time = SDL_GetTicks64();
         left_pressed_prev = left_pressed;
         right_pressed_prev = right_pressed;
-        left_pressed = false;
-        right_pressed = false;
+        //left_pressed = false;
+        //right_pressed = false;
        
-
-
-
         while(SDL_PollEvent(&event) != 0){ // a queue of events for this frame
             if(event.type == SDL_QUIT){
                 keep_running = false;
@@ -59,20 +95,53 @@ int main(){
                 }else if(event.button.button == SDL_BUTTON_RIGHT){
                     right_pressed = true;
                 }
+            }else if(event.type == SDL_MOUSEBUTTONUP){
+                if(event.button.button == SDL_BUTTON_LEFT){
+                    left_pressed = false;
+                }else if(event.button.button == SDL_BUTTON_RIGHT){
+                    right_pressed = false;
+                }
+            }else if(event.type == SDL_MOUSEMOTION){
+                SDL_GetMouseState(&mouse_x, &mouse_y);
+                mouse_rect.x = mouse_x;
+                mouse_rect.y = mouse_y;
             }
         }
 
+        if(*menu_status == HOME){
+            get_home_menu(menu_status, renderer,&mouse_rect,bg,*b1,*b2,*b3,&keep_running,left_pressed);
+        }else if(*menu_status == SETTINGS){
+            get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed);
+        }else if(*menu_status == SELECTION){
+            get_selection_menu(menu_status, renderer);
+        }else{
+            ; // game is on
+        }
+        //get_main_menu(renderer, bg, settings_bg, menu_status, fx, music);
 
+        SDL_RenderPresent(renderer); // UPDATE THE SCREEN
 
         frame_duration = SDL_GetTicks64() - frame_start_time;
-        //std::cout << frame_duration << "\n";
         if(frame_delay > frame_duration){
         
             SDL_Delay(frame_delay - frame_duration);
         }
     }
 
-    //SDL_Delay(5000);
+
+    bg.free_picture();
+    settings_bg.free_picture();
+    b1->free_button_pictures();
+    b2->free_button_pictures();
+    b3->free_button_pictures();
+    b4->free_button_pictures();
+    b5->free_button_pictures();
+    delete b1;
+    delete b2;
+    delete b3;
+    delete b4;
+    delete b5; 
+
     IMG_Quit();
     SDL_DestroyWindow(window);
     SDL_Quit();
@@ -81,11 +150,78 @@ int main(){
 
 }
 
-
-
 int init_png_support(){
     if(IMG_Init(IMG_INIT_PNG) == 0){
         return -1;
     }
     return 0;
+}
+
+int get_main_menu(SDL_Renderer* renderer, Picture bg, Picture settings_bg, menu* status, setting* fx, setting* music){
+    if(*status == HOME){
+        SDL_RenderCopy(renderer, bg.texture, bg.rect, NULL);
+        // get home page and buttons
+
+        //cout << "1\n";
+    }else if (*status == SETTINGS){
+        SDL_RenderCopy(renderer, settings_bg.texture, settings_bg.rect, NULL);
+        // get settings page and buttons
+    }else if(*status == SELECTION){
+        //cout << "3\n";
+    }
+    *fx = ON;
+    
+    if(*fx == ON ){
+        //cout << "sound is on\n";
+    }else{
+        //cout << "its off\n";
+    }
+    return 0;
+}
+
+int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked){
+    bg.render();
+    b1.update_button(clicked, mouse_pos);
+    b1.render();
+    b2.update_button(clicked, mouse_pos);
+    b2.render();
+    b3.update_button(clicked, mouse_pos);
+    b3.render();
+
+    if(b1.was_clicked()){
+        *status = SELECTION;
+    }else if(b2.was_clicked()){
+        *status = SETTINGS;
+    }else if(b3.was_clicked()){
+        *keep_running = false;
+    }
+
+
+    return 0;
+}
+
+int get_settings_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b, setting* fx, setting* music, bool clicked){
+    bg.render();
+    b.update_button(clicked, mouse_pos);
+    b.render();
+    if(b.was_clicked()){
+        *status = HOME;
+    }
+    return 0;
+}
+
+int get_selection_menu(menu* status, SDL_Renderer* renderer){
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+    return 0;
+}
+
+Button2* create_button(SDL_Renderer* renderer, string bname, int rect_x, int rect_y, int rect_w, int rect_h){
+
+    Picture* n = new Picture(renderer, bname+"_normal", rect_x, rect_y, rect_w, rect_h);
+    Picture* h = new Picture(renderer, bname+"_hovered", rect_x, rect_y, rect_w, rect_h);
+    Picture* c = new Picture(renderer, bname+"_clicked", rect_x, rect_y, rect_w, rect_h);
+    Button2* b = new Button2(renderer, n, h, c);
+    return b;
+
 }
