@@ -1,15 +1,30 @@
-B=bin/
+#B=bin/
+#B=''
+B=
 
 BINARIES=$Bmain.o $Bplayer.o $Bboard.o $Bheadings.o $Bpiece.o $Bking.o $Bguard.o \
 	$Brifleman.o $Bspecops.o $Bparatrooper.o $Bengineer.o $Bscout.o $Bsearchlight.o
 
-CPPS=main.cpp board.cpp headings.cpp piece.cpp king.cpp guard.cpp \
-	rifleman.cpp specops.cpp paratrooper.cpp engineer.cpp scout.cpp searchlight.cpp player.cpp
+CPPS=main.cpp player.cpp board.cpp headings.cpp piece.cpp king.cpp guard.cpp \
+	rifleman.cpp specops.cpp paratrooper.cpp engineer.cpp scout.cpp searchlight.cpp
 
 
 
-defualt: $(BINARIES)
+.PHONY: default move build back
+
+default: move build back
+
+
+move:
+	mv bin/*.o .
+
+build: $(BINARIES)
 	g++ -o run $(BINARIES) 
+
+back:
+	mv *.o bin
+
+
 
 $Bmain.o: main.cpp main.h board.h defaults.h pieceincludes.h player.h
 	g++ -c main.cpp

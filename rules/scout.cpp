@@ -34,7 +34,7 @@ void Scout::reveal(){
 		for(int i = 0; i < 8; ++i){
 			Square* select = square;
 			if(!(select = move_selection(square, headings[i], 1))) continue;
-			select->reveal_square(color, vect);
+			select->reveal(color, vect);
 		}
 	}
 

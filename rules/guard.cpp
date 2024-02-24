@@ -20,11 +20,11 @@ void Guard::reveal(){
 	Square* select = square;
 
 	for(u8 i = 0; i < GUARD_VISION; ++i){
-		if(select = move_selection(square, heading, i)) select->reveal_square(color, vect);
+		if(select = move_selection(square, heading, i)) select->reveal(color, vect);
 		if(i == GUARD_VISION - 2 && select){
 			Square* lr;
-			if(lr = move_selection(select, *heading.left, 1)) lr->reveal_square(color, vect);
-			if(lr = move_selection(select, *heading.right, 1)) lr->reveal_square(color, vect);
+			if(lr = move_selection(select, *heading.left, 1)) lr->reveal(color, vect);
+			if(lr = move_selection(select, *heading.right, 1)) lr->reveal(color, vect);
 		}
 	}
 }

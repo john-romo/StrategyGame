@@ -25,15 +25,13 @@ public:
 	Square(u8 _x, u8 _y);
 	
 	void print_square();
-	void reveal_square(u8 color, std::vector<void*>* vect);
+	void reveal(u8 color, std::vector<void*>* vect);
 
 };
 
 void square_unreveal(void* vSquare, u8 color);
 
 Square* get_square(u8 x, u8 y);
-
-u8 get_distance(Square* start, Square* end);
 
 Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect);
 

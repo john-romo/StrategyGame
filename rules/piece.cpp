@@ -93,6 +93,8 @@ u8 Piece::get_distance(u8 x, u8 y){
 }
 
 
+
+
 bool place_piece(Piece* piece, u8 x, u8 y){
 	Square* s;
 	if(!(s = get_square(x, y))) return(false);
