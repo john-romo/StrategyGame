@@ -22,7 +22,7 @@ void Square::print_square(){
 	else printf("-");
 }
 
-void Square::reveal_square(u8 color, std::vector<void*>* vect){
+void Square::reveal(u8 color, std::vector<void*>* vect){
 	if(!color) ++(this->visibleWhite);
 	else ++(this->visibleBlack);
 
@@ -38,19 +38,13 @@ void square_unreveal(void* vSquare, u8 color){
 Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect){
 	Square* r;
 	for(int i = 0; i < range; ++i){
-		s->reveal_square(color, vect);
+		s->reveal(color, vect);
 		r = s;
 		if(!(s = move_selection(s, h, 1))) break;
 	}
 	return(r);
 }
 
-u8 get_distance(Square* start, Square* end){
-	i8 x = start->x - end->x;
-	i8 y = start->y - end->y;
-
-	return(sqrt(pow(x, 2) +  pow(y, 2)));
-}
 
 Square* get_square(u8 x, u8 y){
 	Square* s;

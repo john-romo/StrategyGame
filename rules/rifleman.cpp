@@ -22,8 +22,8 @@ void Rifleman::reveal(){
 
 	Square* select;
 	if(select = move_selection(square, *heading.right, 1))
-		select->reveal_square(color, vect);
+		select->reveal(color, vect);
 	
 	if(select = move_selection(square, *heading.left, 1))
-		select->reveal_square(color, vect);
+		select->reveal(color, vect);
 }

@@ -1,8 +1,0 @@
-#!/bin/bash
-
-if ! [ -z "$(ls -A bin)" ]; then
-	echo "not empty"
-	mv bin/*.o .
-else
-	echo "empty"
-fi
