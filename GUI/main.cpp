@@ -4,6 +4,7 @@
 #include <SDL2/SDL_image.h>
 #include <list>
 
+#include "tile.hpp"
 #include "button2.hpp"
 #include "picture.hpp"
 
@@ -13,6 +14,7 @@ using namespace std;
 // g++ main.cpp
 // Compiling requires the SDL2 and SDL2_image libraries.
 // SDL2_image can be installed on linux using the following command:
+// sudo apt-get install libsdl2-dev
 // sudo apt-get install libsdl2-image-dev
 
 enum menu {HOME, SETTINGS, SELECTION, GAME};
@@ -24,6 +26,8 @@ int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Pic
 int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos, Picture bg, Button2 b1, setting* fx, setting* music, bool clicked);
 int get_selection_menu(menu* status, SDL_Renderer* renderer);
 Button2* create_button(SDL_Renderer* renderer, string bname, int rect_x, int rect_y, int rect_w, int rect_h);
+Tile* create_tile(SDL_Renderer* renderer, int x, int y);
+int create_map(SDL_Renderer* renderer);
 
 int main(){
 
@@ -73,6 +77,17 @@ int main(){
     bool right_pressed_prev = false;
 
     std::cout << "Hello World\n";
+
+    // Tile*** create_map(SDL_Renderer* renderer){
+    Tile* map[100][100];
+    for(int i=0; i<100; i++){
+        for(int j=0; j<100; j++){
+            map[i][j] = create_tile(renderer, i, j);
+        }
+    }
+    //return map;
+
+
 
     while(keep_running){
         //cout << mouse_x << endl;
@@ -214,6 +229,16 @@ int get_selection_menu(menu* status, SDL_Renderer* renderer){
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     return 0;
+}
+
+
+
+Tile* create_tile(SDL_Renderer* renderer, int x, int y){
+
+    Picture* p = new Picture(renderer, "whitetile", x, y, 32, 32);
+    Tile* t = new Tile(x,y,p);
+    return t;
+    
 }
 
 Button2* create_button(SDL_Renderer* renderer, string bname, int rect_x, int rect_y, int rect_w, int rect_h){
