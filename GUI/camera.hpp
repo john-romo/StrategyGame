@@ -11,7 +11,6 @@
 
 class Camera{
     private:
-
         int num_x_tiles = 20;
         int num_y_tiles = 15;
         int current_x_pos = 0;
@@ -19,8 +18,8 @@ class Camera{
     
     public:
 
-        Tile* map[100][100];
-        Camera(Tile* the_map[100][100]);
+        Tile* (*map)[100][100] = nullptr;
+        Camera(Tile* (*the_map)[100][100]);
         void display_map();
         void change_camera_pos(int mouse_x, int mouse_y);
 

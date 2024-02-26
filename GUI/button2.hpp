@@ -1,4 +1,3 @@
-
 #ifndef BUTTON_H
 #define BUTTON_H
 
@@ -25,17 +24,13 @@ class Button2{
         Picture* normal_picture = nullptr;
         Picture* hovered_picture = nullptr;
         Picture* clicked_picture = nullptr;
-        //Status stat; 
         
     public:
-        
         Button2(SDL_Renderer* renderer, Picture* normal, Picture* hovered, Picture* clicked); // constructor
         void update_button(bool pressed, SDL_Rect* mouse_pos);
         void render(void);
         bool was_clicked();
         void free_button_pictures();
-
 };
-
 
 #endif

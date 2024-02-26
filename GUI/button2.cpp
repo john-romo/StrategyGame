@@ -27,10 +27,6 @@ Button2::Button2(SDL_Renderer* renderer, Picture* normal, Picture* hovered, Pict
 
 void Button2::update_button(bool left_pressed, SDL_Rect* mouse_pos){
     *prev_status_ptr = *status_ptr;
-
-    if(*prev_status_ptr != *status_ptr){
-        std::cout << "nequal!!!";
-    }
     
     if(SDL_HasIntersection(mouse_pos, current_picture->rect)){ // if mouse pos is at the button
         if(left_pressed){
@@ -49,15 +45,11 @@ void Button2::update_button(bool left_pressed, SDL_Rect* mouse_pos){
     if(*status_ptr == *prev_status_ptr){
         return;
     }
-    std::cout << "nE";
     if(*status_ptr == NORMAL){
-        std::cout << "Swap1\n";
         current_picture = normal_picture;
     }else if(*status_ptr == HOVERED){
-        std::cout << "Swap2\n";
         current_picture = hovered_picture;
     }else{
-        std::cout << "Swap3\n";
         current_picture = clicked_picture;
     }
 
@@ -76,17 +68,17 @@ void Button2::render(void){
 }
 
 bool Button2::was_clicked(void){
-    if(*status_ptr  == HOVERED){
-        std::cout << "1\n";
-    }
-    if(*status_ptr == CLICKED){
-        std::cout << "2\n";
-    }
-    if(*status_ptr == HOVERED && prev_status == CLICKED ){
-        std::cout << "3\n";
-    }
+    // if(*status_ptr  == HOVERED){
+    //     std::cout << "1\n";
+    // }
+    // if(*status_ptr == CLICKED){
+    //     std::cout << "2\n";
+    // }
+    // if(*status_ptr == HOVERED && prev_status == CLICKED ){
+    //     std::cout << "3\n";
+    // }
     if(*status_ptr == HOVERED && prev_status == CLICKED && active == true){
-        std::cout << "klik\n";
+        //std::cout << "klik\n";
         return true;
     }
     return false;

@@ -10,6 +10,8 @@ Tile::Tile(int x_location, int y_location, Picture* tpicture){
 
 // Render the tile. Since it is placed on a scrollable map, the rectangle will need to be moved.
 
-void Tile::render(int xmod = 0, int ymod = 0){
+void Tile::render(int xmod, int ymod){
+    picture->rect->x = xmod*32;
+    picture->rect->y = ymod*32;
     SDL_RenderCopy(picture->renderer, picture->texture, NULL, picture->rect );
 }
