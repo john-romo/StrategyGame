@@ -12,7 +12,8 @@
 #define i8 int8_t
 #define u16 uint16_t
 #define i16 int16_t
-#define ABS_MASK_8 0x7FFF
+#define ABS_MASK_8 0xEF
+#define ABS_MASK_16 0xEFFF
 
 #define EAST (headings[0])
 #define NORTHEAST (headings[1])
@@ -23,6 +24,7 @@
 #define SOUTH (headings[6])
 #define SOUTHEAST (headings[7])
 
+#define NUM_PIECE_TYPES 8
 #define KING 0
 #define GUARD 1
 #define RIFLEMAN 2
@@ -35,7 +37,7 @@
 #define WHITE 0
 #define BLACK 1
 
-#define ATTACK 0
+#define ACTION 0
 #define DEFEND 1
 #define STEALTH 2
 
