@@ -21,7 +21,6 @@ const char* run_tests(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// acceptance test 
 void test_player_init(){
 	assert(playerWhite);
 	assert(playerBlack);
@@ -30,7 +29,6 @@ void test_player_init(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// acceptance test
 void test_player_stamina(){
 	assert(playerWhite->drain_stamina(1));
 	assert(playerWhite->stamina == (STARTING_STAMINA-1));
@@ -45,7 +43,6 @@ void test_player_stamina(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// acceptance test
 void test_square_get(){
 	Square* s;
 	assert(!(s = get_square(DIAG-2, 0)));
@@ -56,7 +53,6 @@ void test_square_get(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// acceptance test
 void test_square_attr(){
 	Square* s;
 	assert(s = get_square(DIAG-1, HEIGHT-1));
@@ -69,32 +65,6 @@ void test_square_attr(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// white box -> condition coverage
-/*
-Piece* create_piece(u8 type, u8 color){
-	if(!inc_created_pieces(type, color)) return NULL;
-	switch(type){
-		case KING:
-			return new Piece(KING, color, ACTION, KING_STAMINA_DRAIN, KING_HEALTH_DAMAGE, KING_ARMOR_DAMAGE, KING_STARTING_HEALTH, KING_STARTING_ARMOR);
-		case GUARD:
-			return new Piece(GUARD, color, ACTION, GUARD_STAMINA_DRAIN, GUARD_HEALTH_DAMAGE, GUARD_ARMOR_DAMAGE, GUARD_STARTING_HEALTH, GUARD_STARTING_ARMOR);
-		case RIFLEMAN:
-			return new Piece(RIFLEMAN, color, ACTION, RIFLEMAN_STAMINA_DRAIN, RIFLEMAN_HEALTH_DAMAGE, RIFLEMAN_ARMOR_DAMAGE, RIFLEMAN_STARTING_HEALTH, RIFLEMAN_STARTING_ARMOR);
-		case SPECOPS:
-			return new Piece(SPECOPS, color, ACTION, SPECOPS_STAMINA_DRAIN, SPECOPS_HEALTH_DAMAGE, SPECOPS_ARMOR_DAMAGE, SPECOPS_STARTING_HEALTH, SPECOPS_STARTING_ARMOR);
-		case PARATROOPER:
-			return new Piece(PARATROOPER, color, ACTION, PARATROOPER_STAMINA_DRAIN, PARATROOPER_HEALTH_DAMAGE, PARATROOPER_ARMOR_DAMAGE, PARATROOPER_STARTING_HEALTH, PARATROOPER_STARTING_ARMOR);
-		case ENGINEER:
-			return new Piece(ENGINEER, color, ACTION, ENGINEER_STAMINA_DRAIN, ENGINEER_HEALTH_DAMAGE, ENGINEER_ARMOR_DAMAGE, ENGINEER_STARTING_HEALTH, ENGINEER_STARTING_ARMOR);
-		case SCOUT:
-			return new Piece(SCOUT, color, ACTION, SCOUT_STAMINA_DRAIN, SCOUT_HEALTH_DAMAGE, SCOUT_ARMOR_DAMAGE, SCOUT_STARTING_HEALTH, SCOUT_STARTING_ARMOR);
-		case SEARCHLIGHT:
-			return new Piece(SEARCHLIGHT, color, DEFEND, SEARCHLIGHT_STAMINA_DRAIN, SEARCHLIGHT_HEALTH_DAMAGE, SEARCHLIGHT_ARMOR_DAMAGE, SEARCHLIGHT_STARTING_HEALTH, SEARCHLIGHT_STARTING_ARMOR);
-		default:
-			return NULL;
-	}
-}
-*/
 void test_piece_creation(){
 	for(u8 c = 0; c < 2; ++c){
 		for(u8 t = 0; t < NUM_PIECE_TYPES; ++t){
@@ -119,7 +89,6 @@ void test_piece_creation(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integration -> Square & Piece classes -> big bang
 void test_piece_placement(){
 	Piece* k = create_piece(KING, BLACK);
 	assert(!place_piece(k, 0, 0));
@@ -134,7 +103,6 @@ void test_piece_placement(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integration -> Piece & Square classes -> big bang
 void test_piece_movement(){
 	Piece* r = create_piece(RIFLEMAN, WHITE);
 	assert(!r->move(DIAG+1, 1));
@@ -158,7 +126,6 @@ void test_piece_movement(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integration -> Piece & Square classes -> big bang
 void test_piece_target(){
 	Piece* r = create_piece(RIFLEMAN, WHITE);
 	place_piece(r, DIAG-1, 0);
@@ -182,7 +149,6 @@ void test_piece_target(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integration -> Piece, Square & Heading classes -> big bang
 void test_piece_turn(){
 	Piece* k = create_piece(KING, WHITE);
 	place_piece(k, DIAG+1, 1);
@@ -202,18 +168,6 @@ void test_piece_turn(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// white box -> condition coverage
-/*
-bool Piece::set_stance(u8 s){
-	if(this->stance == s) return true;
-	if(this->type == SEARCHLIGHT) return false;
-	if(this->type == KING) return false;
-	if((s == DEFEND) && (this->type == SCOUT)) return false;
-	if((s == STEALTH) && !((this->type == SCOUT) || (this->type == SPECOPS) || (this->type == PARATROOPER))) return false;
-	this->stance = s;
-	return true;
-}
-*/
 void test_piece_stance(){
 	Piece* sl = create_piece(SEARCHLIGHT, WHITE);
 	assert(!sl->set_stance(ACTION));
@@ -236,7 +190,6 @@ void test_piece_stance(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integration -> Piece & Square classes -> big bang 
 void test_piece_attack(){
 	Piece* k = create_piece(KING, WHITE);
 	assert(!k->attack());
@@ -266,7 +219,6 @@ void test_piece_attack(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integratoin -> Piece & Square classes -> big bang
 void test_piece_repair(){
 	Piece* rw = create_piece(RIFLEMAN, WHITE);
 	place_piece(rw, DIAG-1, 0);
@@ -286,7 +238,6 @@ void test_piece_repair(){
 
 ////////////////////////////////////////////////////////////////////////////
 
-// integrationg -> Piece & Square classes -> big bang
 void test_piece_reassign(){
 	Piece* k = create_piece(KING, WHITE);
 	place_piece(k, DIAG, 0);
