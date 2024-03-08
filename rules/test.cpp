@@ -1,3 +1,6 @@
+// test.cpp
+
+
 #include "test.h"
 
 
@@ -15,29 +18,29 @@ const char* run_tests(){
 	test_piece_attack(); 
 	test_piece_repair(); 
 	test_piece_reassign(); 
-
+	
 	return "ALL TESTS PASSED\0";
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 void test_player_init(){
-	assert(playerWhite);
-	assert(playerBlack);
+	assert(players[WHITE]);
+	assert(players[BLACK]);
 	printf("test_player_init() passed\n");
 }
 
 ////////////////////////////////////////////////////////////////////////////
 
 void test_player_stamina(){
-	assert(playerWhite->drain_stamina(1));
-	assert(playerWhite->stamina == (STARTING_STAMINA-1));
-	assert(!(playerWhite->drain_stamina(STARTING_STAMINA)));
+	assert(players[WHITE]->drain_stamina(1));
+	assert(players[WHITE]->stamina == (STARTING_STAMINA-1));
+	assert(!(players[WHITE]->drain_stamina(STARTING_STAMINA)));
 	
-	playerWhite->recharge_stamina(1);
-	assert(playerWhite->stamina == STARTING_STAMINA);
-	playerWhite->recharge_stamina(1);
-	assert(playerWhite->stamina == STARTING_STAMINA);
+	players[WHITE]->recharge_stamina(1);
+	assert(players[WHITE]->stamina == STARTING_STAMINA);
+	players[WHITE]->recharge_stamina(1);
+	assert(players[WHITE]->stamina == STARTING_STAMINA);
 	printf("test_player_stamina() passed\n");
 }
 
@@ -66,11 +69,9 @@ void test_square_attr(){
 ////////////////////////////////////////////////////////////////////////////
 
 void test_piece_creation(){
-	for(u8 c = 0; c < 2; ++c){
+	for(u8 c = 0; c < NUM_COLORS; ++c){
 		for(u8 t = 0; t < NUM_PIECE_TYPES; ++t){
-			u8 max;
-			if(c == WHITE) max = maxWhitePiecesCreated[t];
-			else max = maxBlackPiecesCreated[t];
+			u8 max = MAX_PIECES_CREATED[c][t];
 			for(u8 i = 0; i < max; ++i){
 				assert(create_piece(t,c));
 			}
@@ -78,11 +79,12 @@ void test_piece_creation(){
 	}
 	assert(!create_piece(KING, WHITE));
 	assert(!create_piece(RIFLEMAN, BLACK));
-	assert(!create_piece(10, WHITE));
-	assert(whitePiecesCreated[KING] == maxWhitePiecesCreated[KING]);
-	delete_piece(whitePieces.back());
-	assert(whitePiecesCreated[SEARCHLIGHT] == (maxWhitePiecesCreated[SEARCHLIGHT]-1));
-	assert(!create_piece(SEARCHLIGHT, 2));
+	assert(!create_piece(NUM_PIECE_TYPES+1, WHITE));
+	assert(piecesCreated[WHITE][KING] == MAX_PIECES_CREATED[WHITE][KING]);
+	Piece* p = pieces[WHITE].back();
+	delete_piece(pieces[WHITE].back());
+	assert(piecesCreated[WHITE][PARATROOPER] == (MAX_PIECES_CREATED[WHITE][PARATROOPER]-1));
+	assert(!create_piece(PARATROOPER, NUM_COLORS));
 	delete_pieces();
 	printf("test_piece_creation() passed\n");
 }
@@ -114,7 +116,7 @@ void test_piece_movement(){
 	assert(!r->move(DIAG+1, HEIGHT-1));
 	assert(!r->move(DIAG+2, 3));
 	assert(r->move(DIAG+2, 2));
-	assert(playerWhite->stamina < STARTING_STAMINA);
+	assert(players[WHITE]->stamina < STARTING_STAMINA);
 	Piece* sl = create_piece(SEARCHLIGHT, BLACK);
 	place_piece(sl, DIAG+4, 4);
 	assert(!sl->move(DIAG+4, 5));
@@ -129,20 +131,20 @@ void test_piece_movement(){
 void test_piece_target(){
 	Piece* r = create_piece(RIFLEMAN, WHITE);
 	place_piece(r, DIAG-1, 0);
-	assert(!r->target(DIAG-1, 0));
-	assert(!r->target(DIAG-1, 1));
-	assert(!r->target(DIAG-1, HEIGHT-1));
+	assert(!r->set_target(DIAG-1, 0));
+	assert(!r->set_target(DIAG-1, 1));
+	assert(!r->set_target(DIAG-1, HEIGHT-1));
 	Piece* r2 = create_piece(RIFLEMAN, BLACK);
 	place_piece(r2, DIAG-1, 1);
-	assert(r->target(DIAG-1, 1));
+	assert(r->set_target(DIAG-1, 1));
 	r->remove();
 	place_piece(r, DIAG-1, 5);
 	r->move(DIAG-1, 5);
 	Piece* e = create_piece(ENGINEER, WHITE);
 	place_piece(e, DIAG-2, 4);
-	assert(e->target(DIAG-1, 5));
+	assert(e->set_target(DIAG-1, 5));
 	r->move(DIAG-1, 3);
-	assert(!r->target(DIAG-2, 4));
+	assert(!r->set_target(DIAG-2, 4));
 	delete_pieces();
 	printf("test_piece_target() passed\n");
 }
@@ -205,14 +207,20 @@ void test_piece_attack(){
 	assert(!rw->attack());
 	Piece* rb = create_piece(RIFLEMAN, BLACK);
 	place_piece(rb, DIAG-1, 1);
-	rw->target(DIAG-1, 1);	
+	rw->set_target(DIAG-1, 1);	
 	assert(rw->attack());	
 	assert(rb->armor == (RIFLEMAN_STARTING_ARMOR - RIFLEMAN_ARMOR_DAMAGE));
 	assert(rb->health == (RIFLEMAN_STARTING_HEALTH - RIFLEMAN_HEALTH_DAMAGE));
 	assert(rw->attack());
-	assert(rb->armor == 0);
-	assert(rb->health = (RIFLEMAN_STARTING_HEALTH - (2*RIFLEMAN_HEALTH_DAMAGE) - 1));
 	assert(!rb->placed);
+	Piece* rb2 = create_piece(RIFLEMAN, BLACK);
+	place_piece(rb2, DIAG-1, 1);
+	rb2->set_stance(DEFEND);
+	rw->set_target(DIAG-1, 1);
+	assert(rw->attack());
+	assert(rb2->health == (RIFLEMAN_STARTING_HEALTH - DEFEND_HEALTH_DAMAGE_MOD(HEALTH_DAMAGE[rw->type])));
+	assert(rb2->armor == (RIFLEMAN_STARTING_ARMOR - DEFEND_ARMOR_DAMAGE_MOD(ARMOR_DAMAGE[rw->type])));
+	assert(rw->attack());
 	delete_pieces();
 	printf("test_piece_attack() passed\n");
 }
@@ -224,14 +232,14 @@ void test_piece_repair(){
 	place_piece(rw, DIAG-1, 0);
 	Piece* rb = create_piece(RIFLEMAN, BLACK);
 	place_piece(rb, DIAG-1, 1);
-	rw->target(DIAG-1, 1);	
+	rw->set_target(DIAG-1, 1);	
 	rw->attack();	
 	Piece* e = create_piece(ENGINEER, BLACK);
 	place_piece(e, DIAG, 1);
 	e->turn(&WEST);
-	e->target(DIAG-1, 1);
+	e->set_target(DIAG-1, 1);
 	assert(e->repair());
-	assert(rb->armor == startingArmor[ENGINEER]);
+	assert(rb->armor == STARTING_ARMOR[ENGINEER]);
 	delete_pieces();
 	printf("test_piece_repair() passed\n");
 }
@@ -246,12 +254,12 @@ void test_piece_reassign(){
 	Piece* rb = create_piece(RIFLEMAN, BLACK);
 	place_piece(rb, DIAG+1, 0);
 	assert(!k->reassign(ENGINEER));
-	k->target(DIAG-1, 0);
+	k->set_target(DIAG-1, 0);
 	assert(!k->reassign(KING));
 	assert(!k->reassign(SEARCHLIGHT));
 	assert(!k->reassign(10));
 	assert(k->reassign(ENGINEER));
-	k->target(DIAG+1, 0);
+	k->set_target(DIAG+1, 0);
 	assert(!k->reassign(ENGINEER));
 	delete_pieces();
 	printf("test_piece_reassign() passed\n");

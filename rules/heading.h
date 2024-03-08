@@ -1,10 +1,10 @@
-// headings.h
+// heading.h
 
 
-#ifndef _HEADINGS_H
-#define _HEADINGS_H
+#ifndef _HEADING_H
+#define _HEADING_H
 
-#include "defaults.h"
+#include "default.h"
 
 class Heading{
 public:
@@ -18,6 +18,7 @@ public:
 };
 
 extern Heading headings[8];
+extern Heading* START_HEADINGS[NUM_PLAYERS];
 
 void create_headings();
 

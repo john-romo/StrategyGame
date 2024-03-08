@@ -1,8 +1,6 @@
 
-BINARIES=main.o player.o board.o headings.o piece.o test.o
-
-CPPS=main.cpp player.cpp board.cpp headings.cpp piece.cpp test.cpp
-
+BINARIES=main.o player.o board.o heading.o piece.o test.o
+CPPS=main.cpp player.cpp board.cpp heading.cpp piece.cpp test.cpp
 
 .PHONY: default move build back slow clean
 
@@ -17,43 +15,36 @@ build: $(BINARIES)
 back:
 	mv *.o bin
 
-
-
-main.o: main.cpp main.h board.h defaults.h player.h test.h definitions.h
-	g++ -c main.cpp
-
-player.o: player.h defaults.h definitions.h
-	g++ -c player.cpp
-
-board.o: board.cpp board.h defaults.h definitions.h
-	g++ -c board.cpp
-
-headings.o: headings.cpp headings.h defaults.h definitions.h
-	g++ -c headings.cpp	
-
-piece.o: piece.cpp piece.h board.h defaults.h definitions.h 
-	g++ -c piece.cpp
-
-test.o: test.cpp board.h piece.h headings.h player.h definitions.h
-	g++ -c test.cpp
-
-
-board.h: defaults.h headings.h piece.h
-defaults.h: definitions.h
-definitions.h:
-engineer.h: defaults.h piece.h board.h
-guard.h: defaults.h piece.h board.h
-headings.h: defaults.h
-main.h: 
-piece.h: defaults.h headings.h player.h
-player.h: defaults.h
-test.h: defaults.h definitions.h board.h piece.h headings.h player.h
-
 slow:
 	g++ -o run $(CPPS)
 
 clean:
 	rm *.o
+
+
+main.o: main.cpp main.h board.h player.h test.h default.h 
+	g++ -c main.cpp
+player.o: player.cpp player.h
+	g++ -c player.cpp
+board.o: board.cpp board.h 
+	g++ -c board.cpp
+heading.o: heading.cpp heading.h 
+	g++ -c heading.cpp	
+piece.o: piece.cpp piece.h board.h  
+	g++ -c piece.cpp
+test.o: test.cpp test.h 
+	g++ -c test.cpp
+
+main.h: 
+player.h: default.h
+board.h: default.h heading.h piece.h
+headings.h: default.h
+piece.h: default.h heading.h player.h
+test.h: default.h board.h piece.h heading.h player.h
+defaults.h: 
+
+
+
 
 
 

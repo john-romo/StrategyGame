@@ -1,7 +1,7 @@
 // headings.cpp
 
 
-#include "headings.h"
+#include "heading.h"
 
 Heading headings[8];
 
@@ -53,3 +53,10 @@ void create_headings(){
 	NORTHEAST.right = &EAST;
 	NORTHEAST.reverse = &SOUTHWEST;
 }
+
+
+Heading* START_HEADINGS[NUM_PLAYERS] = {&NORTH, &SOUTH};
+
+
+
+

@@ -4,7 +4,7 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
-#include "defaults.h"
+#include "default.h"
 #include <cstdio>
 
 class Player{
@@ -20,6 +20,7 @@ public:
 
 extern Player* playerWhite;
 extern Player* playerBlack;
+extern Player* players[NUM_PLAYERS];
 
 void create_players();
 void delete_players();
