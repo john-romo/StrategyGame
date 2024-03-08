@@ -3,8 +3,7 @@
 
 #include "player.h"
 
-Player* playerWhite;
-Player* playerBlack;
+Player* players[NUM_PLAYERS];
 
 Player::Player(u8 _color) : color(_color){
 	this->stamina = STARTING_STAMINA;
@@ -22,11 +21,11 @@ void Player::recharge_stamina(u8 amount){
 }
 
 void create_players(){
-	playerWhite = new Player(WHITE);
-	playerBlack = new Player(BLACK);
+	for(u8 i = 0; i < NUM_PLAYERS; ++i){
+		players[i] = new Player(i);
+	}
 }
 
 void delete_players(){
-	delete(playerWhite);
-	delete(playerBlack);
+	for(Player* p : players) delete(p);
 }

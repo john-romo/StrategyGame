@@ -4,6 +4,8 @@
 
 std::unordered_map<u16, Square*> board;
 
+/////////////////////////////////////////////////////////////////////////////
+
 Square::Square(u8 _x, u8 _y) : x(_x), y(_y) {
 	this->piece = NULL;
 	this->occupied = false;
@@ -13,14 +15,6 @@ Square::Square(u8 _x, u8 _y) : x(_x), y(_y) {
 	board.insert({(_x << 8) | _y, this});
 }
 
-void Square::print_square(){
-	if(this->occupied) printf("%d", this->piece->type);
-	else if(this->visibleWhite && (!this->visibleBlack)) printf("+");
-	else if(this->visibleBlack && (!this->visibleWhite)) printf("*");
-	else if (this->visibleWhite && this->visibleBlack) printf("=");
-	else printf("-");
-}
-
 void Square::reveal(u8 color, std::vector<void*>* vect){
 	if(!color) ++(this->visibleWhite);
 	else ++(this->visibleBlack);
@@ -28,20 +22,17 @@ void Square::reveal(u8 color, std::vector<void*>* vect){
 	vect->push_back(this);
 }
 
-void square_unreveal(void* vSquare, u8 color){
-	Square* square = (Square*) vSquare;
-	if(!color) --(square->visibleWhite);
-	else --(square->visibleBlack);
+void Square::unreveal(u8 color){
+	if(!color) --(this->visibleWhite);
+	else --(this->visibleBlack);
 }
 
-Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect){
-	Square* r;
-	for(int i = 0; i < range; ++i){
-		s->reveal(color, vect);
-		r = s;
-		if(!(s = move_selection(s, h, 1))) break;
-	}
-	return(r);
+void Square::print_square(){
+	if(this->occupied) printf("%d", this->piece->type);
+	else if(this->visibleWhite && (!this->visibleBlack)) printf("+");
+	else if(this->visibleBlack && (!this->visibleWhite)) printf("*");
+	else if (this->visibleWhite && this->visibleBlack) printf("=");
+	else printf("-");
 }
 
 
@@ -58,6 +49,18 @@ Square* get_square(u8 x, u8 y){
 }
 
 
+/////////////////////////////////////////////////////////////////////////////
+
+Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect){
+	Square* r;
+	for(int i = 0; i < range; ++i){
+		s->reveal(color, vect);
+		r = s;
+		if(!(s = move_selection(s, h, 1))) break;
+	}
+	return(r);
+}
+
 Square* move_selection(Square* s, Heading h, u8 magnitude){
 	u8 x = (s->x) + (magnitude*h.x);
 	u8 y = (s->y) + (magnitude*h.y);
@@ -67,6 +70,8 @@ Square* move_selection(Square* s, Heading h, u8 magnitude){
 	return(NULL);
 }
 
+
+////////////////////////////////////////////////////////////////////
 
 void create_board(){
 	for(u8 y = 0; y < DIAG - 1; ++y){
@@ -86,6 +91,13 @@ void create_board(){
 	}
 }
 
+
+void delete_board(){
+	for(auto& [key, value]: board) delete(value);
+}
+
+
+////////////////////////////////////////////////////////////////////
 
 void print_board(){
 	Square* s;
@@ -124,32 +136,19 @@ void print_board(){
 
 void print_visible_squares(){
 	printf("\nWhite Revealed Squares: \n\n");
-	for(Piece* piece : whitePieces){
-		printf("Type: %d\n", piece->type);
-		for(void* v : piece->visibleSquares){
-			Square* s = (Square*) v;
-			printf("(%d, %d) -> vW: %d, vB: %d\n", s->x, s->y, s->visibleWhite, s->visibleBlack);
+	for(u8 i = 0; i < NUM_COLORS; ++i){
+		for(Piece* piece : pieces[i]){
+			printf("Type: %d\n", piece->type);
+			for(void* v : piece->visibleSquares){
+				Square* s = (Square*) v;
+				printf("(%d, %d) -> vW: %d, vB: %d\n", s->x, s->y, s->visibleWhite, s->visibleBlack);
+			}
+			printf("\n");
+
 		}
-		printf("\n");
-	}
-	printf("\nBlack Revealed Squares: \n\n");
-	for(Piece* piece : blackPieces){
-		printf("Type: %d\n", piece->type);
-		for(void* v : piece->visibleSquares){
-			Square* s = (Square*) v;
-			printf("(%d, %d) -> vW: %d, vB: %d\n", s->x, s->y, s->visibleWhite, s->visibleBlack);
-		}
-		printf("\n");
 	}
 	printf("\n");
 }
 
 
-void delete_board(){
-	for(auto& [key, value]: board) delete(value);
-}
 
-
-
-
-////////////////////////////////////////////////////////////////////

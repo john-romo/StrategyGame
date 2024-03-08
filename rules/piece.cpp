@@ -1,114 +1,101 @@
 // piece.cpp
 
-#include <algorithm>
 #include "piece.h"
 #include "board.h"
 
-std::vector<Piece*> whitePieces;
-std::vector<Piece*> blackPieces;
-u8 whitePiecesCreated[8] = {0};
-u8 blackPiecesCreated[8] = {0};
 
+//////////// CREATION //////////////////////////////////////////////////////////////////////////
 
-bool inc_created_pieces(u8 type, u8 color){
-	if(color > BLACK) return false;
-	if(color == WHITE){
-		if((whitePiecesCreated[type]+1) > maxWhitePiecesCreated[type]) return false;
-		++whitePiecesCreated[type];
-	}
-	else{
-		if((blackPiecesCreated[type]+1) > maxBlackPiecesCreated[type]) return false;
-		++blackPiecesCreated[type];
-	}
-	return true;
-}
-
-void dec_created_pieces(u8 type, u8 color){
-	if(color == WHITE) --(whitePiecesCreated[type]);
-	else --(blackPiecesCreated[type]);
-}
+std::vector<Piece*> pieces[NUM_COLORS];
+u8 piecesCreated[NUM_COLORS][NUM_PIECE_TYPES] = {0};
 
 
 Piece* create_piece(u8 type, u8 color){
-	if(!inc_created_pieces(type, color)) return NULL;
+	if(color > BLACK) return NULL;
+	if(type > (NUM_PIECE_TYPES-1)) return NULL;
+	if((piecesCreated[color][type] + 1) > MAX_PIECES_CREATED[color][type]) return NULL;
+	else ++piecesCreated[color][type];
 	switch(type){
 		case KING:
-			return new Piece(KING, color, ACTION, KING_STAMINA_DRAIN, KING_HEALTH_DAMAGE, KING_ARMOR_DAMAGE, KING_STARTING_HEALTH, KING_STARTING_ARMOR);
+			return new Piece(KING, color);
 		case GUARD:
-			return new Piece(GUARD, color, ACTION, GUARD_STAMINA_DRAIN, GUARD_HEALTH_DAMAGE, GUARD_ARMOR_DAMAGE, GUARD_STARTING_HEALTH, GUARD_STARTING_ARMOR);
+			return new Piece(GUARD, color);
 		case RIFLEMAN:
-			return new Piece(RIFLEMAN, color, ACTION, RIFLEMAN_STAMINA_DRAIN, RIFLEMAN_HEALTH_DAMAGE, RIFLEMAN_ARMOR_DAMAGE, RIFLEMAN_STARTING_HEALTH, RIFLEMAN_STARTING_ARMOR);
+			return new Piece(RIFLEMAN, color);
 		case SPECOPS:
-			return new Piece(SPECOPS, color, ACTION, SPECOPS_STAMINA_DRAIN, SPECOPS_HEALTH_DAMAGE, SPECOPS_ARMOR_DAMAGE, SPECOPS_STARTING_HEALTH, SPECOPS_STARTING_ARMOR);
+			return new Piece(SPECOPS, color);
 		case PARATROOPER:
-			return new Piece(PARATROOPER, color, ACTION, PARATROOPER_STAMINA_DRAIN, PARATROOPER_HEALTH_DAMAGE, PARATROOPER_ARMOR_DAMAGE, PARATROOPER_STARTING_HEALTH, PARATROOPER_STARTING_ARMOR);
+			return new Piece(PARATROOPER, color);
 		case ENGINEER:
-			return new Piece(ENGINEER, color, ACTION, ENGINEER_STAMINA_DRAIN, ENGINEER_HEALTH_DAMAGE, ENGINEER_ARMOR_DAMAGE, ENGINEER_STARTING_HEALTH, ENGINEER_STARTING_ARMOR);
+			return new Piece(ENGINEER, color);
 		case SCOUT:
-			return new Piece(SCOUT, color, ACTION, SCOUT_STAMINA_DRAIN, SCOUT_HEALTH_DAMAGE, SCOUT_ARMOR_DAMAGE, SCOUT_STARTING_HEALTH, SCOUT_STARTING_ARMOR);
+			return new Piece(SCOUT, color);
 		case SEARCHLIGHT:
-			return new Piece(SEARCHLIGHT, color, DEFEND, SEARCHLIGHT_STAMINA_DRAIN, SEARCHLIGHT_HEALTH_DAMAGE, SEARCHLIGHT_ARMOR_DAMAGE, SEARCHLIGHT_STARTING_HEALTH, SEARCHLIGHT_STARTING_ARMOR);
+			return new Piece(SEARCHLIGHT, color);
 		default:
 			return NULL;
 	}
 }
 
 
-Piece::Piece(u8 _type, u8 _color, u8 _stance, float _staminaDrain, u8 _healthDamage, u8 _armorDamage, i8 _health, i8 _armor){
-	this->type = _type;
-	this->color = _color;
-	this->stance = _stance;
-	this->armor = _armor;
-	this->health = _health;
-	this->staminaDrain = _staminaDrain;
-	this->healthDamage = _healthDamage;
-	this->armorDamage = _armorDamage;
+Piece::Piece(u8 _type, u8 _color) : type(_type), color(_color){
+	this->stance = ACTION;
+	this->health = STARTING_HEALTH[_type];
+	this->armor = STARTING_ARMOR[_type];
 	this->placed = false;
 	this->x = 0;
 	this->y = 0;
-	if(!this->color){
-		this->player = playerWhite;
-		this->heading = NORTH;
-	}
-	else{
-		this->player = playerBlack;
-		this->heading = SOUTH;
-	}
+	this->heading = *START_HEADINGS[_color]; 
 	this->square = NULL;
 	this->targetSquare = NULL;
-	push_piece(this);
+	pieces[_color].push_back(this);
 }
 
 
+bool place_piece(Piece* piece, u8 x, u8 y){
+	if(piece->placed) return false;
+	Square* s;
+	if(!(s = get_square(x, y))) return false;
+	if(s->occupied) return false;
 
+	s->piece = piece;
+	s->occupied = true;
+	piece->x = x;
+	piece->y = y;
+	piece->square = s;
+	piece->placed = true;
+	piece->reveal();
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+	return true;
+}
+
+//////////// VISION ////////////////////////////////////////////////////////////////////////////
 
 void Piece::reveal(){
 	switch(this->type){
 		case KING:
-			king_reveal(this);
-			break;
-		case GUARD:
-			guard_reveal(this);
-			break;
-		case RIFLEMAN:
-			rifleman_reveal(this);
-			break;
-		case SPECOPS:
-			specops_reveal(this);
-			break;
-		case PARATROOPER:
-			paratrooper_reveal(this);
+			this->king_reveal();
 			break;
 		case ENGINEER:
-			engineer_reveal(this);
+			this->engineer_reveal();
 			break;
 		case SCOUT:
-			scout_reveal(this);
+			this->scout_reveal();
 			break;
 		case SEARCHLIGHT:
-			searchlight_reveal(this);
+			this->searchlight_reveal();
+			break;
+		case GUARD:
+			this->guard_reveal();
+			break;
+		case RIFLEMAN:
+			this->rifleman_reveal();
+			break;
+		case SPECOPS:
+			this->specops_reveal();
+			break;
+		case PARATROOPER:
+			this->paratrooper_reveal();
 			break;
 		default:
 			break;
@@ -116,22 +103,23 @@ void Piece::reveal(){
 }
 
 
-void king_reveal(Piece* p){
-	Square* square = (Square*) p->square;
-	bool color = p->color;
-	Heading heading = p->heading;
-	std::vector<void*>* vect = &p->visibleSquares;
-	
+void Piece::king_reveal(){
+	Square* square = (Square*) this->square;
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
+
 	u8 range = KING_VISION;
 
 	Square* start;
-	if(!(start = move_selection(square, *heading.reverse, 1))){
+	if(!(start = move_selection(square, *(heading.reverse), 1))){
 		start = square;
 		--range;
 	}
 
+
 	Heading direction;
-	if(p->x < HEIGHT/2) direction = EAST;
+	if(this->x < HEIGHT/2) direction = EAST;
 	else direction = WEST;
 	
 	start = move_selection(start, direction, KING_VISION/2);
@@ -143,11 +131,11 @@ void king_reveal(Piece* p){
 }
 
 
-void guard_reveal(Piece* p){
-	Square* square = (Square*) p->square;	
-	bool color = p->color;
-	Heading heading = p->heading;
-	std::vector<void*>* vect = &p->visibleSquares;
+void Piece::guard_reveal(){
+	Square* square = (Square*) this->square;	
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
 	
 	Square* select = square;
 
@@ -162,11 +150,11 @@ void guard_reveal(Piece* p){
 }
 
 
-void rifleman_reveal(Piece* p){
-	Square* square = (Square*) p->square;
-	Heading heading = p->heading;
-	u8 color = p->color;
-	std::vector<void*>* vect = &p->visibleSquares;
+void Piece::rifleman_reveal(){
+	Square* square = (Square*) this->square;
+	Heading heading = this->heading;
+	u8 color = this->color;
+	std::vector<void*>* vect = &this->visibleSquares;
 	
 	line_reveal(square, heading, RIFLEMAN_VISION, color, vect);
 
@@ -179,11 +167,11 @@ void rifleman_reveal(Piece* p){
 }
 
 
-void specops_reveal(Piece* p){
-	Square* square = (Square*) p->square;	
-	bool color = p->color;
-	Heading heading = p->heading;
-	std::vector<void*>* vect = &p->visibleSquares;
+void Piece::specops_reveal(){
+	Square* square = (Square*) this->square;	
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
 	
 	square->reveal(color, vect);
 	
@@ -200,14 +188,14 @@ void specops_reveal(Piece* p){
 }
 
 
-void paratrooper_reveal(Piece* p){};
+void Piece::paratrooper_reveal(){};
 
 
-void engineer_reveal(Piece* p){
-	Square* square = (Square*) p->square;	
-	bool color = p->color;
-	Heading heading = p->heading;
-	std::vector<void*>* vect = &p->visibleSquares;
+void Piece::engineer_reveal(){
+	Square* square = (Square*) this->square;	
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
 	
 	Square* select = square;
 
@@ -222,22 +210,22 @@ void engineer_reveal(Piece* p){
 }
 
 
-void scout_reveal(Piece* p){
-	Square* square = (Square*) p->square;
-	bool color = p->color;
-	Heading heading = p->heading;
-	std::vector<void*>* vect = &p->visibleSquares;
+void Piece::scout_reveal(){
+	Square* square = (Square*) this->square;
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
 
-	if(p->stance != STEALTH){
+	if(this->stance != STEALTH){
 		line_reveal(square, heading, SCOUT_VISION, color, vect);
 
-		Heading lr[2] = {*p->heading.left, *p->heading.right};
+		Heading lr[2] = {*this->heading.left, *this->heading.right};
 		for(int i = 0; i < 2; ++i){
 			for(int j = 0, r = SCOUT_VISION-1; j < SCOUT_VISION; ++j, --r){
 				if(!(square = move_selection(square, lr[i], 1))) break;
 				line_reveal(square, heading, r, color, vect);
 			}
-			square = (Square*) p->square;
+			square = (Square*) this->square;
 		}	
 	}
 	else{
@@ -250,11 +238,11 @@ void scout_reveal(Piece* p){
 }
 
 
-void searchlight_reveal(Piece* p){
-	Square* square = (Square*) p->targetSquare;
+void Piece::searchlight_reveal(){
+	Square* square = (Square*) this->targetSquare;
 	if(!square) return;
-	bool color = p->color;
-	std::vector<void*>* vect = &p->visibleSquares;
+	bool color = this->color;
+	std::vector<void*>* vect = &this->visibleSquares;
 	Heading vertical, horizontal;
 
 	if(square->y < HEIGHT/2) vertical = NORTH;
@@ -273,33 +261,35 @@ void searchlight_reveal(Piece* p){
 }
 
 
-void reveal_pieces(){
-	for(Piece* piece: whitePieces) piece->reveal();
-	for(Piece* piece: blackPieces) piece->reveal();
-}
-
-
 void Piece::unreveal(){
 	for(void* square : this->visibleSquares){
-		square_unreveal(square, this->color);
+		Square* s = (Square*) square;
+		s->unreveal(this->color);
 	}
 	this->visibleSquares.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+
+void reveal_pieces(){
+	for(u8 i = 0; i < NUM_COLORS; ++i){
+		for(Piece* piece : pieces[i]) piece->reveal();
+	}
+}
+
+
+//////////// MUTATIONS /////////////////////////////////////////////////////////////////////////
 
 bool Piece::set_stance(u8 s){
-	if(this->stance == s) return true;
 	if(this->type == SEARCHLIGHT) return false;
 	if(this->type == KING) return false;
+	if(this->stance == s) return true;
 	if((s == DEFEND) && (this->type == SCOUT)) return false;
 	if((s == STEALTH) && !((this->type == SCOUT) || (this->type == SPECOPS) || (this->type == PARATROOPER))) return false;
 	this->stance = s;
 	return true;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------------------------------------//
 
 bool Piece::turn(Heading* h){
 	if(!this->placed) return false;
@@ -310,16 +300,16 @@ bool Piece::turn(Heading* h){
 	return true;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
+//--------------------------------------------------------------------------------------------//
 
-bool Piece::target(u8 x, u8 y){
+bool Piece::set_target(u8 x, u8 y){
 	if(this->type > NUM_PIECE_TYPES-1) return false;
 	if(this->type == SCOUT) return false;
 
 	Square* ts = get_square(x, y);
 
 	if(this->type == SEARCHLIGHT){
-		bool check = searchlight_target(this, y);
+		bool check = this->set_searchlight_target(y);
 		if(!check) return false;
 	}
 	if(this->type != KING){
@@ -334,94 +324,23 @@ bool Piece::target(u8 x, u8 y){
 	return true;
 }
 
-bool searchlight_target(Piece* p, u8 y){
+bool Piece::set_searchlight_target(u8 y){
 	u8 midline = (HEIGHT-1)/2;
-	if(p->color == WHITE && y < midline) return true;
-	if(p->color == BLACK && y > midline) return true;
+	if(this->color == WHITE && y < midline) return true;
+	if(this->color == BLACK && y > midline) return true;
 	return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Piece::attack(){
-	if((this->type < GUARD) || (this->type > SPECOPS)) return false;
-	if(!this->placed) return false; 
-	if(!this->targetSquare) return false;
-	Piece* target = ((Square*) this->targetSquare)->piece;
-	u8 hd = this->healthDamage;
-	u8 ad = this->armorDamage;
-	if(target->stance == DEFEND){
-		hd = hd/2;
-		ad = ad/2;
-	}
-	target->armor -= ad;
-	if(target->armor < 0){
-		target->armor = 0;
-		hd = hd+1;
-	}
-	target->health -= hd;
-	if(target->health < 0) delete_piece(target);
-	return true;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Piece::repair(){
-	if(!this->type == ENGINEER) return false;
-	if(!this->placed) return false;
-	if(!this->targetSquare) return false;
-	Piece* target = ((Square*) this->targetSquare)->piece;
-	if(!target->armor < startingArmor[target->type]) return false;
-	++target->armor;
-	return true;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Piece::reassign(u8 type){
-	if(type > NUM_PIECE_TYPES-1) return false;
-	if((type == SEARCHLIGHT) || (type == KING)) return false;
-	Square* pos = (Square*) this->targetSquare;
-	if(!pos) return false;
-	if(!pos->occupied) return false;
-	Piece* target = pos->piece;
-	if(target->type == type) return false;
-	if(target->color != this->color) return false;
-
-	if(this->color == WHITE){
-		if(!(whitePiecesCreated[type] < maxWhitePiecesCreated[type])) return false;
-	}
-	else if(!(blackPiecesCreated[type] < maxBlackPiecesCreated[type])) return false;
-	delete_piece(target);
-	Piece* p = create_piece(type, this->color);
-	place_piece(p, pos->x, pos->y);
-	return true;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool Piece::remove(){
-	if(!this->placed) return false;
-	Square* square = (Square*) this->square;
-	square->occupied = false;
-	square->piece = NULL;
-	this->square = NULL;
-	this->placed = false;
-	this->unreveal();
-	return true;
-}
-
+//////////// ACTIONS ///////////////////////////////////////////////////////////////////////////
 
 bool Piece::move(u8 x, u8 y){
 	if(!this->placed) return false;
 	if(this->type == SEARCHLIGHT) return false;
-	if(this->stance == DEFEND) return false;
+	if(this->stance != ACTION) return false;
 	Square* s = get_square(x, y);
 	if(!s) return false;
-	if(!this->player->drain_stamina(this->staminaDrain * this->get_distance(x, y)))
+	if(!players[this->color]->drain_stamina(STAMINA_DRAIN[this->type] * this->get_distance(x, y)))
 		return false;
 
 	i8 incX = -1;
@@ -434,6 +353,18 @@ bool Piece::move(u8 x, u8 y){
 
 	while(((this->y != y) || (this->x != x)) && inc_move(incX, incY)){};
 
+	return true;
+}
+
+
+bool Piece::remove(){
+	if(!this->placed) return false;
+	Square* square = (Square*) this->square;
+	square->occupied = false;
+	square->piece = NULL;
+	this->square = NULL;
+	this->placed = false;
+	this->unreveal();
 	return true;
 }
 
@@ -458,68 +389,97 @@ u8 Piece::get_distance(u8 x, u8 y){
 	else return(abs(this->y - y));
 }
 
+//--------------------------------------------------------------------------------------------//
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool place_piece(Piece* piece, u8 x, u8 y){
-	if(piece->placed) return false;
-	Square* s;
-	if(!(s = get_square(x, y))) return false;
-	if(s->occupied) return false;
-
-	s->piece = piece;
-	s->occupied = true;
-	piece->x = x;
-	piece->y = y;
-	piece->square = s;
-	piece->placed = true;
-	piece->reveal();
+bool Piece::attack(){
+	if(this->stance != ACTION) return false;
+	if(!IS_ATTACKING_PIECE(this->type)) return false;
+	if(!this->placed) return false; 
+	if(!this->targetSquare) return false;
+	Piece* target = ((Square*) this->targetSquare)->piece;
+	u8 hd = HEALTH_DAMAGE[type];
+	u8 ad = ARMOR_DAMAGE[type];
+	if(target->stance == DEFEND){
+		hd = DEFEND_HEALTH_DAMAGE_MOD(hd); 
+		ad = DEFEND_ARMOR_DAMAGE_MOD(ad);
+	}
+	target->armor -= ad;
+	if(target->armor < 0){
+		target->armor = 0;
+		hd = ZERO_ARMOR_DAMAGE_MOD(hd);
+	}
+	target->health -= hd;
+	if(target->health <= 0){
+		delete_piece(target);	
+		this->targetSquare = NULL;
+	}
 
 	return true;
 }
 
+//--------------------------------------------------------------------------------------------//
 
-void push_piece(Piece* piece){
-	if(!piece->color) whitePieces.push_back(piece);
-	else blackPieces.push_back(piece);
+bool Piece::repair(){
+	if(this->stance != ACTION) return false;
+	if(!this->type == ENGINEER) return false;
+	if(!this->placed) return false;
+	if(!this->targetSquare) return false;
+	Piece* target = ((Square*) this->targetSquare)->piece;
+	if(!target->armor < STARTING_ARMOR[target->type]) return false;
+	++target->armor;
+	return true;
+}
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::reassign(u8 type){
+	if(this->stance != ACTION) return false;
+	if(type > NUM_PIECE_TYPES-1) return false;
+	if((type == SEARCHLIGHT) || (type == KING)) return false;
+	Square* pos = (Square*) this->targetSquare;
+	if(!pos) return false;
+	if(!pos->occupied) return false;
+	Piece* target = pos->piece;
+	if(target->type == type) return false;
+	if(target->color != this->color) return false;
+
+	if(!(piecesCreated[color][type] < MAX_PIECES_CREATED[color][type])) return false;
+
+	delete_piece(target);
+	Piece* p = create_piece(type, this->color);
+	place_piece(p, pos->x, pos->y);
+	return true;
 }
 
 
-void print_pieces(){
-	printf("WHITE PIECES: ");
-	for(Piece* piece: whitePieces) printf("%d ", piece->type);
-	printf("\n");
-	printf("BLACK PIECES: ");
-	for(Piece* piece: blackPieces) printf("%d ", piece->type);
-	printf("\n");
-
-
-}
+//////////// DELETION //////////////////////////////////////////////////////////////////////////
 
 void delete_piece(Piece* p){
 	p->remove();
-	if(p->color == WHITE){
-		u8 size = whitePieces.size();
-		u8 i = 0;
-		for(; i < size; ++i) if(whitePieces[i] == p) break;
-		whitePieces.erase(whitePieces.begin() + i);
-	}
-	else{
-		u8 size = blackPieces.size();
-		u8 i = 0;
-		for(; i < size; ++i) if(blackPieces[i] == p) break;
-		blackPieces.erase(blackPieces.begin() + i);
-	}
-	dec_created_pieces(p->type, p->color);
+	u8 size = pieces[p->color].size();
+	u8 i = 0;
+	for(; i < size; ++i) if(pieces[p->color][i] == p) break;
+	pieces[p->color].erase(pieces[p->color].begin() + i);
+	--piecesCreated[p->color][p->type];
 	delete(p);
 }
 
+
 void delete_pieces(){
-	while(!whitePieces.empty()){
-		delete_piece(whitePieces[0]);
-	}
-	while(!blackPieces.empty()){
-		delete_piece(blackPieces[0]);
+	for(u8 i = 0; i < NUM_COLORS; ++i){
+		while(!pieces[i].empty()) delete_piece(pieces[i][0]);
 	}
 }
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+void print_pieces(){
+	for(u8 i = 0; i < NUM_COLORS; ++i){
+		printf("Color %d Pieces:\n", i);
+		for(Piece* piece: pieces[i]) printf("%d ", piece->type);
+		printf("\n");
+	}
+}
+
 

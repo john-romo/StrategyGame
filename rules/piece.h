@@ -4,23 +4,16 @@
 #define _PIECE_H
 
 #include <vector>
+#include <algorithm>
 
-#include "defaults.h"
-#include "definitions.h"
-#include "headings.h"
+#include "default.h"
+#include "heading.h"
 #include "player.h"
 
 class Piece{
 public:
-	u8 type;
-
-	Player* player;
-	u8 color;
-
-	float staminaDrain;
-
-	u8 healthDamage;
-	u8 armorDamage;
+	const u8 type;
+	const u8 color;
 
 	i8 health;
 	i8 armor;
@@ -38,23 +31,18 @@ public:
 
 	std::vector<void*> visibleSquares;
 	std::vector<void*> targetableSquares;
-
 	
-	Piece(u8 _type, u8 _color, u8 _stance, float _staminaDrain, u8 _healthDamage, u8 _armorDamage, i8 _health, i8 _armor);
+	Piece(u8 _type, u8 _color);
 
 	void reveal();
 	void unreveal();
 
 	bool set_stance(u8 s);
-
 	bool turn(Heading* h);
+	bool set_target(u8 x, u8 y);
 
 	bool move(u8 x, u8 y);
-	bool inc_move(i8 x, i8 y);
-	u8 get_distance(u8 x, u8 y);
 	bool remove();
-
-	bool target(u8 x, u8 y);
 	bool attack();
 	bool repair();
 	bool scan();
@@ -62,35 +50,39 @@ public:
 	bool airdrop();
 	bool reassign(u8 type);
 
+private:
+	bool inc_move(i8 x, i8 y);
+	u8 get_distance(u8 x, u8 y);
+
+	bool set_searchlight_target(u8 y);
+
+	void king_reveal();
+	void guard_reveal();
+	void rifleman_reveal();
+	void specops_reveal();
+	void paratrooper_reveal();
+	void engineer_reveal();
+	void scout_reveal();
+	void searchlight_reveal();
 };
 
-Piece* create_piece(u8 type, u8 _color);
-extern std::vector<Piece*> whitePieces;
-extern std::vector<Piece*> blackPieces;
-extern u8 whitePiecesCreated[8];
-extern u8 blackPiecesCreated[8];
+
+
+extern std::vector<Piece*> pieces[NUM_COLORS];
+extern u8 piecesCreated[NUM_COLORS][NUM_PIECE_TYPES];
 bool inc_created_pieces(u8 type, u8 color);
-void dec_created_pieces(u8 type, u8 color);
+Piece* create_piece(u8 type, u8 _color);
+void push_piece(Piece* piece);
+bool place_piece(Piece* piece, u8 x, u8 y);
 
 
 void reveal_pieces();
-void king_reveal(Piece* p);
-void guard_reveal(Piece* p);
-void rifleman_reveal(Piece* p);
-void specops_reveal(Piece* p);
-void paratrooper_reveal(Piece* p);
-void engineer_reveal(Piece* p);
-void scout_reveal(Piece* p);
-void searchlight_reveal(Piece* p);
 
-bool searchlight_target(Piece* p, u8 y);
-
-bool place_piece(Piece* piece, u8 x, u8 y);
-void push_piece(Piece* piece);
-void print_pieces();
+void dec_created_pieces(u8 type, u8 color);
 void delete_piece(Piece* p);
 void delete_pieces();
 
+void print_pieces();
 
 
 #endif

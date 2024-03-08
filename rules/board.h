@@ -7,8 +7,8 @@
 #include <iostream>
 #include <unordered_map>
 
-#include "defaults.h"
-#include "headings.h"
+#include "default.h"
+#include "heading.h"
 #include "piece.h"
 
 
@@ -24,24 +24,22 @@ public:
 
 	Square(u8 _x, u8 _y);
 	
-	void print_square();
 	void reveal(u8 color, std::vector<void*>* vect);
-
+	void unreveal(u8 color);
+	void print_square();
 };
-
-void square_unreveal(void* vSquare, u8 color);
 
 Square* get_square(u8 x, u8 y);
 
-Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect);
-
-Square* move_selection(Square* s, Heading h, u8 magnitude);
-
 extern std::unordered_map<u16, Square*> board;
 
+Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect);
+Square* move_selection(Square* s, Heading h, u8 magnitude);
+
 void create_board();
+void delete_board();
+
 void print_board();
 void print_visible_squares();
-void delete_board();
 
 #endif

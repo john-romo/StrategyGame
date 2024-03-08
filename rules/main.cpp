@@ -4,9 +4,9 @@
 
 #include "main.h"
 #include "board.h"
-#include "defaults.h"
 #include "player.h"
 #include "test.h"
+#include "default.h"
 
 int main(int, char**){
 	start_game();

@@ -1,3 +1,6 @@
+// test.h
+
+
 #ifndef _TEST_H
 #define _TEST_H
 
@@ -6,11 +9,10 @@
 #include <stdlib.h>
 #include <cassert>
 
-#include "defaults.h"
-#include "definitions.h"
+#include "default.h"
 #include "board.h"
 #include "piece.h"
-#include "headings.h"
+#include "heading.h"
 #include "player.h"
 
 
