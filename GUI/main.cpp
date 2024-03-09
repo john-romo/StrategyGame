@@ -8,6 +8,7 @@
 #include "button2.hpp"
 #include "picture.hpp"
 #include "camera.hpp"
+#include "piece.h"
 
 using namespace std;
 
@@ -19,12 +20,11 @@ using namespace std;
 enum menu {HOME, SETTINGS, SELECTION, GAME};
 enum setting { ON, OFF };
 
-int get_main_menu(SDL_Renderer* renderer, Picture bg, Picture settings_bg, menu* status, setting* fx, setting* music);
+void assign_tile_pointers(Tile* (*map)[100][100]);
 int init_png_support();
 int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked);
 int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos, Picture bg, Button2 b1, setting* fx, setting* music, bool clicked, Button2 on1, Button2 off1);
-int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y);
-Button2* create_button(SDL_Renderer* renderer, string bname, int rect_x, int rect_y, int rect_w, int rect_h);
+int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y, Piece2* p);
 Tile* create_tile(SDL_Renderer* renderer, int x, int y);
 int create_map(SDL_Renderer* renderer);
 
@@ -53,15 +53,23 @@ int main(){
 
     Picture bg(renderer, "bg", 0, 0, 640, 480);
     Picture settings_bg(renderer, "settingsbg", 0, 0, 640, 480);
-    Button2* b1 = create_button(renderer, "single_player", 100,430,132,30);
-    Button2* b2 = create_button(renderer, "settings", 300,430,92,30);
-    Button2* b3 = create_button(renderer, "quit", 500,430,60,30);
-    Button2* b4 = create_button(renderer, "back", 300,430,60,30);
-    Button2* b5 = create_button(renderer, "play", 0,430,60,30);
-    Button2* on1 = create_button(renderer, "on", 500, 200, 60, 30);
-    Button2* off1 = create_button(renderer, "off", 500, 200, 60, 30);
+    //Button2* b1 = create_button(renderer, "single_player", 100,430,132,30);
+    Button2* b1 = new Button2(renderer, "single_player",100,430,132,30);
+    //Button2* b2 = create_button(renderer, "settings", 300,430,92,30);
+    Button2* b2 = new Button2(renderer, "settings",300,430,92,30);
+    //Button2* b3 = create_button(renderer, "quit", 500,430,60,30);
+    Button2* b3 = new Button2(renderer, "quit", 500,430,60,30);
+    //Button2* b4 = create_button(renderer, "back", 300,430,60,30);
+    Button2* b4 = new Button2(renderer, "back", 300,430,60,30);
+    //Button2* b5 = create_button(renderer, "play", 0,430,60,30);
+    Button2* b5 = new Button2(renderer, "play", 0,430,60,30);
+    //Button2* on1 = create_button(renderer, "on", 500, 200, 60, 30);
+    Button2* on1 = new Button2(renderer, "on", 500, 200, 60, 30);
+    //Button2* off1 = create_button(renderer, "off", 500, 200, 60, 30);
+    Button2* off1 = new Button2(renderer, "off", 500, 200, 60, 30);
     //Button2* b6 = create_button(renderer, "<", 0,0,640,480);
     //Button2* b7 = create_button(renderer, ">", 0,0,640,480);
+    
     
     SDL_Rect mouse_rect;
     mouse_rect.x = 0;
@@ -84,8 +92,12 @@ int main(){
             map[i][j] = create_tile(renderer, i, j);
         }
     }
+
+    assign_tile_pointers(&map);
     
     Camera test_camera(&map);
+
+    Piece2* p = new Piece2(renderer, map[5][5], 5, 5);
 
     // This is the main loop
 
@@ -128,7 +140,7 @@ int main(){
         }else if(*menu_status == SETTINGS){
             get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed, *on1, *off1);
         }else if(*menu_status == SELECTION){
-            get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
+            get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y, p);
         }else{
             ; // game is on
         }
@@ -170,28 +182,6 @@ int init_png_support(){
     return 0;
 }
 
-int get_main_menu(SDL_Renderer* renderer, Picture bg, Picture settings_bg, menu* status, setting* fx, setting* music){
-    if(*status == HOME){
-        SDL_RenderCopy(renderer, bg.texture, bg.rect, NULL);
-        // get home page and buttons
-
-        //cout << "1\n";
-    }else if (*status == SETTINGS){
-        SDL_RenderCopy(renderer, settings_bg.texture, settings_bg.rect, NULL);
-        // get settings page and buttons
-    }else if(*status == SELECTION){
-        //cout << "3\n";
-    }
-    *fx = ON;
-    
-    if(*fx == ON ){
-        //cout << "sound is on\n";
-    }else{
-        //cout << "its off\n";
-    }
-    return 0;
-}
-
 int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked){
     bg.render();
     b1.update_button(clicked, mouse_pos);
@@ -208,7 +198,6 @@ int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Pic
     }else if(b3.was_clicked()){
         *keep_running = false;
     }
-
 
     return 0;
 }
@@ -232,7 +221,7 @@ int get_settings_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos,
     return 0;
 }
 
-int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y){
+int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y, Piece2* p){
     camera->display_map();
     camera->change_camera_pos(mouse_x, mouse_y);
     //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -252,12 +241,15 @@ Tile* create_tile(SDL_Renderer* renderer, int x, int y){
     return t;    
 }
 
-Button2* create_button(SDL_Renderer* renderer, string bname, int rect_x, int rect_y, int rect_w, int rect_h){
-
-    Picture* n = new Picture(renderer, bname+"_normal", rect_x, rect_y, rect_w, rect_h);
-    Picture* h = new Picture(renderer, bname+"_hovered", rect_x, rect_y, rect_w, rect_h);
-    Picture* c = new Picture(renderer, bname+"_clicked", rect_x, rect_y, rect_w, rect_h);
-    Button2* b = new Button2(renderer, n, h, c);
-    return b;
-
+void assign_tile_pointers(Tile* (*map)[100][100]){
+    for(int row=0; row<100; row++){
+        for(int col=0; col<100; col++){
+            if(row > 0) (*map)[row][col]->north = (*map)[row-1][col];
+            if(row < 99) (*map)[row][col]->south = (*map)[row+1][col];
+            if(col > 0) (*map)[row][col]->west = (*map)[row][col-1];
+            if(col < 99) (*map)[row][col]->east = (*map)[row][col+1];
+        }
+    }
+    return;
 }
+

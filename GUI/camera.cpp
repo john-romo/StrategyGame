@@ -20,9 +20,9 @@ void Camera::display_map(){
 
 void Camera::change_camera_pos(int mouse_x, int mouse_y){
     if(mouse_x > 620 && mouse_y < 640) current_x_pos += 1;
-    else if(mouse_x < 20 && mouse_x > 0) current_x_pos -= 1;
+    else if(mouse_x < 20 && mouse_x >= 0) current_x_pos -= 1;
     if(mouse_y > 460 && mouse_y < 480) current_y_pos += 1;
-    else if(mouse_y < 20 && mouse_y > 0) current_y_pos -= 1;
+    else if(mouse_y < 20 && mouse_y >= 0) current_y_pos -= 1;
     if(current_x_pos > 80) current_x_pos = 80;
     else if(current_x_pos < 0) current_x_pos = 0;
     if(current_y_pos > 85) current_y_pos = 85;

@@ -21,8 +21,13 @@ class Tile{
         int y = 0;
 
     public:
-        Tile(int x_location, int y_location,Picture* tpicture);
-        void render(int xmod = 0, int ymod = 0);
+        Tile(int x_location, int y_location, Picture* tpicture);
+        int render(int xmod = 0, int ymod = 0);
+        bool in_view(int n, int v);
+        Tile* north = nullptr;
+        Tile* south = nullptr;
+        Tile* east = nullptr;
+        Tile* west = nullptr;
 
 };
 
