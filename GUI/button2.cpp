@@ -64,7 +64,6 @@ void Button2::update_button(bool left_pressed, SDL_Rect* mouse_pos){
 
 bool Button2::was_clicked(void){
     if(*status_ptr == HOVERED && prev_status == CLICKED && active == true){
-        //std::cout << "klik\n";
         *active_ptr = false;
         return true;
     }
