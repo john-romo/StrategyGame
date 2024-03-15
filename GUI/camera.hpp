@@ -7,6 +7,7 @@
 #include "picture.hpp"
 #include "tile.hpp"
 
+
 // Class to manage the display for each player.
 
 class Camera{
@@ -17,8 +18,8 @@ class Camera{
     
     public:
 
-        Tile* (*map)[100][100] = nullptr;
-        Camera(Tile* (*the_map)[100][100]);
+        //Tile* (*map)[100][100] = nullptr;
+        Camera();
         void display_map();
         void change_camera_pos(int mouse_x, int mouse_y);
         bool right_arrow_pressed;
