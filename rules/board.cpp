@@ -2,33 +2,38 @@
 
 #include "board.h"
 
-std::unordered_map<u16, Square*> board;
+std::unordered_map<uint64_t, Square*> board;
 
 /////////////////////////////////////////////////////////////////////////////
 
-Square::Square(u8 _x, u8 _y) : x(_x), y(_y) {
+Square::Square(int _x, int _y) : x(_x), y(_y) {
 	this->piece = NULL;
 	this->occupied = false;
 	this->visibleWhite = 0;
 	this->visibleBlack = 0;
 
-	board.insert({(_x << 8) | _y, this});
+	uint64_t top = _x;
+
+	board.insert({(top << (sizeof(int)*8)) | _y, this});
 }
 
-void Square::reveal(u8 color, std::vector<void*>* vect){
+void Square::reveal(int color, std::vector<void*>* vect){
 	if(!color) ++(this->visibleWhite);
 	else ++(this->visibleBlack);
 
 	vect->push_back(this);
 }
 
-void Square::unreveal(u8 color){
+void Square::unreveal(int color){
 	if(!color) --(this->visibleWhite);
 	else --(this->visibleBlack);
 }
 
 void Square::print_square(){
-	if(this->occupied) printf("%d", this->piece->type);
+	if(this->occupied){
+		if(this->piece->stance == STEALTH) printf("s");
+		else printf("%d", this->piece->type);
+	}
 	else if(this->visibleWhite && (!this->visibleBlack)) printf("+");
 	else if(this->visibleBlack && (!this->visibleWhite)) printf("*");
 	else if (this->visibleWhite && this->visibleBlack) printf("=");
@@ -36,14 +41,15 @@ void Square::print_square(){
 }
 
 
-Square* get_square(u8 x, u8 y){
+Square* get_square(int x, int y){
 	Square* s;
 	try{
-		s = board.at((x << 8) | y);
+		uint64_t top = x;
+
+		s = board.at((top << (sizeof(int)*8)) | y);
 		return(s);
 	}
 	catch(...){
-		if(DEBUG) std::cerr << "ERROR in get_square() --> INVALID KEY\n";
 		return(NULL);
 	}
 }
@@ -51,7 +57,7 @@ Square* get_square(u8 x, u8 y){
 
 /////////////////////////////////////////////////////////////////////////////
 
-Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect){
+Square* line_reveal(Square* s, Heading h, int range, bool color, std::vector<void*>* vect){
 	Square* r;
 	for(int i = 0; i < range; ++i){
 		s->reveal(color, vect);
@@ -61,9 +67,9 @@ Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void
 	return(r);
 }
 
-Square* move_selection(Square* s, Heading h, u8 magnitude){
-	u8 x = (s->x) + (magnitude*h.x);
-	u8 y = (s->y) + (magnitude*h.y);
+Square* move_selection(Square* s, Heading h, int magnitude){
+	int x = (s->x) + (magnitude*h.x);
+	int y = (s->y) + (magnitude*h.y);
 
 	Square* r;
 	if(r = get_square(x, y)) return(r);
@@ -74,18 +80,18 @@ Square* move_selection(Square* s, Heading h, u8 magnitude){
 ////////////////////////////////////////////////////////////////////
 
 void create_board(){
-	for(u8 y = 0; y < DIAG - 1; ++y){
-		for(u8 x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
 			Square* s = new Square(x,y);
 		}
 	}
-	for(u8 y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
 			Square* s = new Square(x,y);
 		}
 	}
-	for(u8 y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
-		for(u8 x = 0 + d; x < HEIGHT - d; ++x){
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
 			Square* s = new Square(x,y);
 		}
 	}
@@ -93,7 +99,9 @@ void create_board(){
 
 
 void delete_board(){
-	for(auto& [key, value]: board) delete(value);
+	for(auto& [key, value]: board){
+		delete(value);
+	}
 }
 
 
@@ -101,42 +109,42 @@ void delete_board(){
 
 void print_board(){
 	Square* s;
-	u8 row = 0;
+	int row = 0;
 
 	printf("%2d. ", row++);
-	for(u8 y = 0; y < DIAG - 1; ++y){
-		for(u8 i = DIAG - y - 2; i >= 0 && i < 255; --i){
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int i = DIAG - y - 2; i >= 0 && i < 255; --i){
 			printf(" ");	
 		}
-		for(u8 x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
 			if(s = get_square(x, y)) s->print_square();
 		}
 		printf("\n%2d. ", row++);
 	}
 	
-	for(u8 y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
 			if(s = get_square(x, y)) s->print_square();
 		}
 		printf("\n%2d. ", row++);
 	}
 	
-	for(u8 y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
-		for(u8 i = 1; i <= d; ++i){
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int i = 1; i <= d; ++i){
 			printf(" ");
 		}
-		for(u8 x = 0 + d; x < HEIGHT - d; ++x){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
 			if(s = get_square(x, y)) s->print_square();
 		}
 		if(y < HEIGHT-1) printf("\n%2d. ", row++);
 	}
-	printf("\n");
+	printf("\n\n");
 }
 
 
 void print_visible_squares(){
 	printf("\nWhite Revealed Squares: \n\n");
-	for(u8 i = 0; i < NUM_COLORS; ++i){
+	for(int i = 0; i < NUM_COLORS; ++i){
 		for(Piece* piece : pieces[i]){
 			printf("Type: %d\n", piece->type);
 			for(void* v : piece->visibleSquares){

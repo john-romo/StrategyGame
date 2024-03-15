@@ -3,8 +3,6 @@
 #ifndef _BOARD_H
 #define _BOARD_H
 
-#include <cstdio>
-#include <iostream>
 #include <unordered_map>
 
 #include "default.h"
@@ -14,27 +12,28 @@
 
 class Square{
 public:
-	const u8 x;
-	const u8 y;
+	const int x;
+	const int y;
 
 	Piece* piece;
 	bool occupied;
-	u8 visibleWhite;
-	u8 visibleBlack;
+	int visibleWhite;
+	int visibleBlack;
 
-	Square(u8 _x, u8 _y);
+	Square(int _x, int _y);
 	
-	void reveal(u8 color, std::vector<void*>* vect);
-	void unreveal(u8 color);
+	void reveal(int color, std::vector<void*>* vect);
+	void unreveal(int color);
 	void print_square();
 };
 
-Square* get_square(u8 x, u8 y);
 
-extern std::unordered_map<u16, Square*> board;
+Square* get_square(int x, int y);
 
-Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect);
-Square* move_selection(Square* s, Heading h, u8 magnitude);
+extern std::unordered_map<uint64_t, Square*> board;
+
+Square* line_reveal(Square* s, Heading h, int range, bool color, std::vector<void*>* vect);
+Square* move_selection(Square* s, Heading h, int magnitude);
 
 void create_board();
 void delete_board();
