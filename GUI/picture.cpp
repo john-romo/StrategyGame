@@ -21,12 +21,11 @@ Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int 
     if(surface == NULL){
         std::cout << path_str;
         std::cout << "nok\n";
-        throw std::invalid_argument("Error: Recieved a null renderer.");
+        throw std::invalid_argument("Error creating Picture: Ensure a valid PNG exists.");
     }
     texture = SDL_CreateTextureFromSurface(renderer,surface);
     if(texture == NULL){
-        
-        std::cout << "Error creating texture";
+        std::cout << "Error creating Picture texture";
         std::terminate();        
     }
 
@@ -47,6 +46,6 @@ void Picture::free_picture(){
 }
 
 void Picture::render(){
-    SDL_RenderCopy(renderer, texture, rect, NULL);
+    SDL_RenderCopy(renderer, texture, NULL, this->rect);
     return;
 }
