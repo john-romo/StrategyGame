@@ -8,7 +8,12 @@
 // This constructor will set some default statuses and create Picture objects for each 
 // possible button state: being clicked on, hovered over, or neither. 
 
-Button2::Button2(SDL_Renderer* renderer, Picture* normal, Picture* hovered, Picture* clicked){
+Button2::Button2(SDL_Renderer* renderer, std::string bname, int rect_x, int rect_y, int rect_w, int rect_h){
+
+    Picture* normal = new Picture(renderer, bname+"_normal", rect_x, rect_y, rect_w, rect_h);
+    Picture* hovered = new Picture(renderer, bname+"_hovered", rect_x, rect_y, rect_w, rect_h);
+    Picture* clicked = new Picture(renderer, bname+"_clicked", rect_x, rect_y, rect_w, rect_h);
+    this->type = bname;
     active = false;
     active_ptr = &active;
     status = NORMAL;
@@ -56,29 +61,10 @@ void Button2::update_button(bool left_pressed, SDL_Rect* mouse_pos){
     return;
 }
 
-void Button2::render(void){
-    if(status == NORMAL){
-        SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
-    }else if(status == HOVERED){
-        SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
-    }else{
-        SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
-    }
-    return;
-}
 
 bool Button2::was_clicked(void){
-    // if(*status_ptr  == HOVERED){
-    //     std::cout << "1\n";
-    // }
-    // if(*status_ptr == CLICKED){
-    //     std::cout << "2\n";
-    // }
-    // if(*status_ptr == HOVERED && prev_status == CLICKED ){
-    //     std::cout << "3\n";
-    // }
     if(*status_ptr == HOVERED && prev_status == CLICKED && active == true){
-        //std::cout << "klik\n";
+        *active_ptr = false;
         return true;
     }
     return false;
@@ -90,3 +76,32 @@ void Button2::free_button_pictures(){
     delete clicked_picture;
 }
 
+void Button2::render(int xmod, int ymod){
+    if(xmod < 0 && ymod < 0){
+        if(status == NORMAL){
+            SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
+        }else if(status == HOVERED){
+            SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
+        }else{
+            SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+        }
+    }else{
+        if(status == NORMAL){
+            normal_picture->rect->x = xmod*32;
+            normal_picture->rect->y = ymod*32;
+            SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
+        }else if(status == HOVERED){
+            hovered_picture->rect->x = xmod*32;
+            hovered_picture->rect->y = ymod*32;
+            SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
+        }else{
+            clicked_picture->rect->x = xmod*32;
+            clicked_picture->rect->y = ymod*32;
+            SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+        }
+        return;
+
+    }
+    return;
+
+}
