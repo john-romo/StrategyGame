@@ -1,0 +1,14 @@
+main.h: 
+player.h:		default.h
+board.h:		default.h heading.h piece.h
+heading.h:		default.h
+piece.h:		default.h heading.h player.h
+test.h:			default.h board.h piece.h heading.h player.h
+default.h: 
+
+main.cpp: 		main.h board.h player.h test.h default.h 
+player.cpp:		player.h
+board.cpp: 		board.h
+heading.cpp:	heading.h
+piece.cpp:		piece.h board.h 
+test.cpp:		test.h
