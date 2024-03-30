@@ -1,4 +1,5 @@
 // main.cpp
+// new library required: sudo apt-get install libsdl2-ttf-dev
 
 #include <stdlib.h>
 
@@ -13,18 +14,19 @@
 #include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include <list>
 
-#include "tile.hpp"
 #include "button2.hpp"
 #include "picture.hpp"
 #include "camera.hpp"
+#include "piece.h"
 
 enum menu {HOME, SETTINGS, SELECTION, GAME};
 enum setting { ON, OFF };
 
 void assign_tile_pointers(Tile* (*map)[100][100]);
-int init_png_support();
+int init_png_and_font();
 int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked);
 int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos, Picture bg, Button2 b1, setting* fx, setting* music, bool clicked, Button2 on1, Button2 off1);
 int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y);
@@ -48,15 +50,20 @@ int main(int, char**){
     setting* music = &mus;
 
 	SDL_Init(SDL_INIT_EVERYTHING);
-    SDL_Window *window = SDL_CreateWindow("Cool Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, 0);
+    SDL_Window* window = SDL_CreateWindow("Cool Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
     SDL_RenderPresent(renderer);
-    init_png_support();
+    init_png_and_font();
+    
+
+    TTF_Font* font = TTF_OpenFont("Ubuntu-B.ttf", 16);
 
 	SDL_Event event;
 
     Picture bg(renderer, "bg", 0, 0, 640, 480);
     Picture settings_bg(renderer, "settingsbg", 0, 0, 640, 480);
+    Picture sidebar(renderer, "settingsbg", 0, 0, 96, 480);
+    Picture testtext(font, renderer, "Rifleman", 20, 50, 64, 24);
     Picture select_ctrl(renderer, "selectctrl", 100, 428, 440, 52); // 100, 426
     Button2* b1 = new Button2(renderer, "single_player",100,430,132,30);
     Button2* b2 = new Button2(renderer, "settings",300,430,92,30);
@@ -68,6 +75,7 @@ int main(int, char**){
     Button2* piece_selector = new Button2(renderer, "warning", 160, 450, 32, 32 );
 
     Button2* current_selected_button = nullptr;
+    Piece* current_selected_piece = nullptr;
     
     //std::list<Piece*> team_pieces = {};
 
@@ -142,20 +150,57 @@ int main(int, char**){
             get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
             
         }else{ // this is the game
+            // SECTION 1: PIECE SELECTION AND PLACEMENT
             camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed);
             test_camera.change_camera_pos(mouse_x, mouse_y);
+            Square* s = get_square(((mouse_x / 32)+test_camera.current_x_pos), ((mouse_y / 32) + test_camera.current_y_pos));
+            // s->piece->button->render((s->x - test_camera.current_x_pos),(s->y - test_camera.current_y_pos), !(s->piece->is_selected));
+    
+            
+            if(s->occupied){
+                if(s->piece->button->was_clicked()){
+                    if(current_selected_piece != nullptr){
+                        current_selected_piece->is_selected = false;
+                    }
+                    current_selected_piece = s->piece;
+                    current_selected_piece->is_selected = true;
+                    current_selected_piece->button->current_picture = current_selected_piece->button->clicked_picture;
+                    current_selected_button = nullptr;
+                }
+            }
+                
+            
+            if(current_selected_piece != nullptr){
+                sidebar.render();
+                testtext.render();
+                //current_selected_piece->button->current_picture = current_selected_piece->button->clicked_picture;
+            }
+            
             select_ctrl.render();
-            piece_selector->update_button(left_pressed, &mouse_rect);
-            piece_selector->render();
+            if(current_selected_button != piece_selector){
+                piece_selector->update_button(left_pressed, &mouse_rect);
+                piece_selector->render();
+            }else{
+                piece_selector->current_picture = piece_selector->clicked_picture;
+                piece_selector->render(-1, -1, false);
+            }
             if(piece_selector->was_clicked()){
                 current_selected_button = piece_selector;
                 std::cout << "changed selected piece" << std::endl;
+                if(current_selected_piece != nullptr){
+                    current_selected_piece->is_selected = false;
+                    current_selected_piece = nullptr;
+                }
             }
             if(right_pressed){
                 current_selected_button = nullptr;
+                if(current_selected_piece != nullptr){
+                    current_selected_piece->is_selected = false;
+                    current_selected_piece = nullptr;
+                }
             }
 
-            if(left_pressed && !right_pressed && current_selected_button != nullptr){
+            if(left_pressed && !right_pressed && current_selected_button != nullptr && s->occupied == false && s->is_valid){
                 // create new Piece
                 u8 type = KING;
                 if(current_selected_button->type == "warning"){
@@ -165,18 +210,22 @@ int main(int, char**){
                 if(p == NULL){
                     std::cout << "no more Riflemen!" << std::endl;
                 }else{
-                    p-> button = new Button2(renderer, "warning", 0,0,32,32);
+                    p->button = new Button2(renderer, "warning", 0,0,32,32);
                     if(p == NULL){
                         throw std::invalid_argument("Error creating Piece. Invalid arguments.");
                     }
                     if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos))){
                         std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
+                        current_selected_button = nullptr;
                     }else{
                         std::cout << "error: didn't place piece (square occupied)" << std::endl;
                     }
                 }
-                // create new Piece with the current_selected_button type.
             }
+
+            // SECTION 2: PIECE SELECTION AND MOVEMENT
+
+            
         }
         SDL_RenderPresent(renderer); // This will actually update what the player can see.
 
@@ -228,10 +277,14 @@ void end_game(){
 	printf("\n");
 }
 
-int init_png_support(){
+int init_png_and_font(){
     if(IMG_Init(IMG_INIT_PNG) == 0){
         return -1;
     }
+    if(TTF_Init() == -1){
+        return -1;
+    }
+
     return 0;
 }
 
