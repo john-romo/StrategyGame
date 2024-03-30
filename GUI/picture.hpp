@@ -4,6 +4,7 @@
 #include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include <iostream>
 #include <stdexcept>
 
@@ -25,6 +26,8 @@ class Picture{
 
 
     Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h);
+    Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* name, int rect_x, int rect_y, int rect_w, int rect_h);
+    //Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h);
     //Picture();
     void free_picture();
     void render();

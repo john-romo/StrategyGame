@@ -36,27 +36,31 @@ void Button2::update_button(bool left_pressed, SDL_Rect* mouse_pos){
     if(SDL_HasIntersection(mouse_pos, current_picture->rect)){ // if mouse pos is at the button
         if(left_pressed){
             *status_ptr = CLICKED;
+            this->current_picture = clicked_picture;
             if(this->prev_status == HOVERED){
                 *active_ptr = true;
             }
         }else{
             *status_ptr = HOVERED;
+            this->current_picture = hovered_picture;
         }
     }else{
         *status_ptr = NORMAL;
+        this->current_picture = normal_picture;
         *active_ptr = false;
     }
 
     if(*status_ptr == *prev_status_ptr){
         return;
     }
-    if(*status_ptr == NORMAL){
-        current_picture = normal_picture;
-    }else if(*status_ptr == HOVERED){
-        current_picture = hovered_picture;
-    }else{
-        current_picture = clicked_picture;
-    }
+    // if(status == NORMAL){
+    //     this->current_picture = normal_picture;
+    // }else if(status == HOVERED){
+    //     printf("HOVERED\n");
+    //     this->current_picture = hovered_picture;
+    // }else{
+    //     this->current_picture = clicked_picture;
+    // }
 
     return;
 }
@@ -76,29 +80,39 @@ void Button2::free_button_pictures(){
     delete clicked_picture;
 }
 
-void Button2::render(int xmod, int ymod){
-    if(xmod < 0 && ymod < 0){
-        if(status == NORMAL){
-            SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
-        }else if(status == HOVERED){
-            SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
-        }else{
-            SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+void Button2::render(int xmod, int ymod, bool use_default_picture){
+    if(use_default_picture == false){
+        if(xmod >= 0 && ymod >= 0){
+            current_picture->rect->x = xmod*32;
+            current_picture->rect->y = ymod*32;
         }
+        SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
+    }
+    else if(xmod < 0 && ymod < 0){
+        // if(status == NORMAL){
+        //     SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
+        // }else if(status == HOVERED){
+        //     SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
+        // }else{
+        //     SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+        // }
+        SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
     }else{
         if(status == NORMAL){
             normal_picture->rect->x = xmod*32;
             normal_picture->rect->y = ymod*32;
-            SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
+            //SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
+            //SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
         }else if(status == HOVERED){
             hovered_picture->rect->x = xmod*32;
             hovered_picture->rect->y = ymod*32;
-            SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
+            //SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
         }else{
             clicked_picture->rect->x = xmod*32;
             clicked_picture->rect->y = ymod*32;
-            SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+            //SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
         }
+        SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
         return;
 
     }
