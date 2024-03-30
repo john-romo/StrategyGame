@@ -11,11 +11,10 @@
 #include <chrono>
 #include <random>
 
-#include "default.h"
+#include "../default.h"
 #include "piece.h"
 #include "board.h"
 #include "heading.h"
-#include "server.h"
 
 extern bool gameOver;
 extern bool movementPhase;

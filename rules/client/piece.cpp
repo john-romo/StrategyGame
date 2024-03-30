@@ -9,12 +9,14 @@
 
 std::vector<Piece*> pieces[NUM_COLORS];
 int piecesCreated[NUM_COLORS][NUM_PIECE_TYPES] = {0};
+int ids = 0;
+std::pair<int, int> startBounds[NUM_COLORS] = {std::make_pair(0, DIAG-1), std::make_pair(DIAG+WIDTH-2, HEIGHT-1)};
 
 
 Piece* create_piece(int type, int color){
 	if(color >= NUM_COLORS ) return NULL;
 	if(type >= NUM_PIECE_TYPES) return NULL;
-	if((piecesCreated[color][type] + 1) > MAX_PIECES_CREATED[color][type]) return NULL;
+	if((piecesCreated[color][type] + 1) > MAX_PIECES_CREATED[type]) return NULL;
 	else ++piecesCreated[color][type];	
 	switch(type){
 		case KING:
@@ -40,6 +42,7 @@ Piece* create_piece(int type, int color){
 
 
 Piece::Piece(int _type, int _color) : type(_type), color(_color){
+	this->id = ids++;
 	this->stance = ACTION;
 	this->health = STARTING_HEALTH[_type];
 	this->armor = STARTING_ARMOR[_type];
@@ -53,8 +56,22 @@ Piece::Piece(int _type, int _color) : type(_type), color(_color){
 }
 
 
+void create_pieces(){
+	for(int i = 0; i < NUM_PIECE_TYPES; ++i){
+		for(int j = 0; j < MAX_PIECES_CREATED[i]; ++j){
+			Piece* p = create_piece(i, player->color);
+		}
+	}
+}
+
 bool place_piece(Piece* piece, int x, int y){
 	if(piece->placed) return false;
+
+	int bottom = startBounds[piece->color].first;
+	int top = startBounds[piece->color].second;
+
+	if(!((y >= bottom) && (y <= top))) return false;
+	
 	Square* s;
 	if(!(s = get_square(x, y))) return false;
 	if(s->occupied) return false;
@@ -70,6 +87,45 @@ bool place_piece(Piece* piece, int x, int y){
 
 	return true;
 }
+
+void default_placement(){
+	
+	std::vector<Piece*> ps = player->color ? pieces[BLACK] : pieces[WHITE];
+	int bottom = player->color ? HEIGHT-1 : 0;
+	int top = player->color ? HEIGHT-DIAG : DIAG-1;
+	int ymod = player->color ? -1 : 1;
+	
+	//king
+	place_piece(ps[0], CENTER-1, bottom+ymod);
+	//engineer
+	place_piece(ps[1], CENTER-2, top-(2*ymod));
+	place_piece(ps[2], CENTER+2, top-(2*ymod));
+	//scout
+	place_piece(ps[3], CENTER-4, top-(2*ymod));
+	place_piece(ps[4], CENTER+4, top-(2*ymod));
+	//searchlight
+	place_piece(ps[5], CENTER+1, bottom+ymod);
+	//gaurd
+	place_piece(ps[6], CENTER-4, bottom+(4*ymod));
+	place_piece(ps[7], CENTER-2, bottom+(4*ymod));
+	place_piece(ps[8], CENTER, bottom+4*ymod);
+	place_piece(ps[9], CENTER+2, bottom+(4*ymod));
+	//rifleman
+	place_piece(ps[10], CENTER-7, top-ymod);
+	place_piece(ps[11], CENTER-5, top-ymod);
+	place_piece(ps[12], CENTER-3, top-ymod);
+	place_piece(ps[13], CENTER-1, top-ymod);
+	place_piece(ps[14], CENTER+1, top-ymod);
+	place_piece(ps[15], CENTER+3, top-ymod);
+	place_piece(ps[16], CENTER+5, top-ymod);
+	place_piece(ps[17], CENTER+7, top-ymod);
+	//specops
+	place_piece(ps[18], CENTER-9, top-ymod);
+	place_piece(ps[19], CENTER-11, top-ymod);
+	place_piece(ps[20], CENTER+9, top-ymod);
+	place_piece(ps[21], CENTER+11, top-ymod);
+}
+
 
 //////////// VISION ////////////////////////////////////////////////////////////////////////////
 
@@ -439,7 +495,7 @@ bool Piece::reassign(int type){
 	if(target->type == type) return false;
 	if(target->color != this->color) return false;
 
-	if(!(piecesCreated[color][type] < MAX_PIECES_CREATED[color][type])) return false;
+	if(!(piecesCreated[color][type] < MAX_PIECES_CREATED[type])) return false;
 
 	delete_piece(target);
 	Piece* p = create_piece(type, this->color);

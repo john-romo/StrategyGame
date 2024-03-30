@@ -7,12 +7,13 @@
 #include <vector>
 #include <mutex>
 
-#include "default.h"
+#include "../default.h"
 #include "heading.h"
 #include "player.h"
 
 class Piece{
 public:
+	int id;
 	const int type;
 	const int color;
 
@@ -77,7 +78,7 @@ bool inc_created_pieces(int type, int color);
 Piece* create_piece(int type, int _color);
 void push_piece(Piece* piece);
 bool place_piece(Piece* piece, int x, int y);
-
+void default_placement();
 
 void reveal_pieces();
 
@@ -87,5 +88,6 @@ void delete_pieces();
 
 void print_pieces();
 
+void create_pieces();
 
 #endif

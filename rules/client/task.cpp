@@ -10,9 +10,9 @@ Task::Task(int _t, Piece* _p, int _h){
 }
 
 
-void placement_phase(){
+//void placement_phase(){
 	
-}
+//}
 
 void movement_phase(){
 	while(movementPhase){
@@ -33,17 +33,16 @@ void movement_phase(){
 		auto rng = std::default_random_engine {};
 		std::shuffle(std::begin(tasks), std::end(tasks), rng);
 
-		std::stack<BinMove*> moves;
 
 		while(!tasks.empty()){
 			Task* t = tasks.back();
 			tasks.pop_back();
 			Piece* p = t->piece;
-			if(t->type == MSG_TYPE_CANCEL) p->cancel(); 
+			//if(t->type == MSG_TYPE_CANCEL) p->cancel(); 
 			int x = p->x;
 			int y = p->y;
 			if(p->move(headings[t->headingID])){
-				moves.push(create_binmove(x, y, p->x, p->y));	
+				//moves.push(create_binmove(x, y, p->x, p->y));	
 			}
 			delete(t);
 		}

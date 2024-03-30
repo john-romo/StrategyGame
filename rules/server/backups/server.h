@@ -10,8 +10,6 @@
 #include "board.h"
 #include "piece.h"
 #include "heading.h"
-#include "task.h"
-#include "player.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -27,6 +25,8 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/epoll.h>
+
+
 
 
 typedef struct _client{

@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <cassert>
 
-#include "default.h"
+#include "../default.h"
 #include "board.h"
 #include "piece.h"
 #include "heading.h"

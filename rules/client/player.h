@@ -4,7 +4,7 @@
 #ifndef _PLAYER_H
 #define _PLAYER_H
 
-#include "default.h"
+#include "../default.h"
 
 class Player{
 public:
