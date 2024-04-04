@@ -119,10 +119,10 @@ void create_board_filled(SDL_Renderer* renderer){
 			Picture* p = get_square(x,y)->picture;
 			get_square(x,y)->picture = nullptr;
 			p->free_picture();
-			std::string type = "rock";
+			std::string type = "grass4";
 			
 			if((x+y)%2 == 1){
-				type = "rock2";
+				type = "grass4";
 			}
 			get_square(x,y)->picture = new Picture(renderer, type, 0, 0, 32, 32);
 		}
@@ -163,7 +163,7 @@ void mark_valid_tiles(SDL_Renderer* renderer){
 		for(u8 x = 0; x < HEIGHT; ++x){
 			if(get_square(x,y)->is_valid == false){
 				get_square(x,y)->picture->free_picture();
-				get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
+				get_square(x,y)->picture = new Picture(renderer, "rock", 0, 0, 32, 32);
 			}
 		}
 	}
@@ -234,8 +234,12 @@ void camera_display(int current_x, int current_y,SDL_Rect* mouse_pos, bool press
 			Square* s = get_square(x,y);
             s->render(x-current_x,y-current_y);
 			if(s->occupied){ // if there's a piece on this square, render that too
+				
 				s->piece->button->update_button(pressed, mouse_pos);
-				s->piece->button->render(x-current_x,y-current_y);
+				if(s->piece->is_selected){
+					s->piece->button->current_picture = s->piece->button->clicked_picture;
+				}
+				s->piece->button->render(x-current_x,y-current_y, !(s->piece->is_selected));
 			}
         }
     }
