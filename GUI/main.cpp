@@ -252,6 +252,7 @@ int main(int, char**){
     delete off1;
 
     IMG_Quit();
+    TTF_CloseFont(font);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
