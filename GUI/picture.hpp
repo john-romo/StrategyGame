@@ -24,9 +24,9 @@ class Picture{
     SDL_Rect r;
     SDL_Rect* rect;
 
-
+    Picture();
     Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h);
-    Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* name, int rect_x, int rect_y, int rect_w, int rect_h);
+    Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* name, int rect_x, int rect_y);
     //Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h);
     //Picture();
     void free_picture();
