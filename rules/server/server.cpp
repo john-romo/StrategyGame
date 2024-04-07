@@ -4,34 +4,16 @@
 #include "server.h"
 
 
-//std::atomic<bool>* killFlag;
-
-bool* killFlagb;
-std::binary_semaphore sem_killFlag{1};
+std::atomic<bool>* killFlag;
 
 
 void init_killFlag(){
 	int prot = PROT_READ | PROT_WRITE;
 	int opts = MAP_SHARED | MAP_ANONYMOUS;
-	//killFlag = (std::atomic<bool>*) mmap(NULL, sizeof(std::atomic<bool>), prot, opts, -1, 0);
-	//*killFlag = { false };
-	killFlagb = (bool*) mmap(NULL, sizeof(bool), prot, opts, -1, 0);
-	*killFlagb = false;
+	killFlag = (std::atomic<bool>*) mmap(NULL, sizeof(std::atomic<bool>), prot, opts, -1, 0);
+	*killFlag = { false };
 }
 
-bool check_killFlag(){
-	sem_killFlag.acquire();
-	bool r = *killFlagb; 
- 	sem_killFlag.release();
-	return r;
-}
-
-bool set_killFlag(bool b){
-	sem_killFlag.acquire();
-	*killFlagb = b;
-	sem_killFlag.release();
-	return b;
-}
 
 typedef struct _counter{
 	uint64_t value = 0;
@@ -92,8 +74,7 @@ void signal_handler(int signal){
 	if(getpid() == masterProcessId){
 		std::cout << "Master process " << masterProcessId << " shuting down...\n";
 
-		//set_flag(*killFlag, true);
-		set_killFlag(true);
+		set_flag(*killFlag, true);
 					
 		std::cout << "Shuting down clean_games thread...\n";
 		signal_cleanGames.release();
@@ -108,20 +89,12 @@ void signal_handler(int signal){
 		close(serverSocket);
 		close(tickSocket);
 
-		//set_killFlag(true);
-
 		while(runningGamesCounter->value) sec_sleep(0.1);
-		//set_flag(*killFlag, false);
-		set_killFlag(false);
+		set_flag(*killFlag, false);
 		sec_sleep(0.1);
-		munmap(killFlagb, sizeof(bool));
+		munmap(killFlag, sizeof(std::atomic<bool>));
 		munmap(runningGamesCounter, sizeof(Counter));
 		std::cout << "killFlag deleted.\n";
-
-	
-		//munmap(killFlag, sizeof(std::atomic<bool>));
-
-
 
 		std::cout << "Master process shutdown.\n";
 		exit(signal);	
@@ -286,8 +259,7 @@ void run_game(){
 			tickThread.join();
 			dec(runningGamesCounter);
 			do{ sec_sleep(0.1); }
-			while(check_killFlag());
-			//while(check_flag(*killFlag));
+			while(check_flag(*killFlag));
 			sec_sleep(2.0);
 			std::cout << "Game #" << game->id << " shutdown.\n";
 			exit(exitCode);
@@ -299,8 +271,7 @@ void run_game(){
 
 
 int game_status_check(){
-	if(check_killFlag()){
-	//if(check_flag(*killFlag)){
+	if(check_flag(*killFlag)){
 		set_game_status(game, DEAD);
 		return SIGINT;
 	}
@@ -321,8 +292,7 @@ int game_status_check(){
 void tick(){
 	std::cout << "Game #" << game->id << " tick started.\n";
 	while(1){
-		//bool dead = check_flag(*killFlag) || check_flag(flag->shutdown);
-		bool dead = check_killFlag() || check_flag(flag->shutdown);
+		bool dead = check_flag(*killFlag) || check_flag(flag->shutdown);
 		bool connected = !check_flag(flag->disconnect);
 		bool check;
 
@@ -574,8 +544,7 @@ Client* find_client(uint64_t id){
 void clean_games(){
 	while(1){
 		signal_cleanGames.acquire();
-		//if(check_flag(*killFlag)) break;
-		if(check_killFlag()) break;
+		if(check_flag(*killFlag)) break;
 		std::cout << "Deleting dead games...\n";
 		sem_ongoingGames.acquire();
 		std::unordered_map<uint64_t, Game*>* temp = new std::unordered_map<uint64_t, Game*>;
@@ -596,8 +565,7 @@ void clean_games(){
 void clean_clients(){
 	while(1){
 		signal_cleanClients.acquire();	
-		//if(check_flag(*killFlag)) break;
-		if(check_killFlag()) break;
+		if(check_flag(*killFlag)) break;
 		std::cout << "Deleting dead clients...\n";
 		sem_connectedClients.acquire();
 		std::unordered_map<uint64_t, Client*>* temp = new std::unordered_map<uint64_t, Client*>;
