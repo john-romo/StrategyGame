@@ -13,8 +13,8 @@ size_t fileSize;
 offsets used;
 offsets unused;
 
-void logwr(char* ch){
-	write(logfd, ch, strlen(ch));
+void logwr(char* ch, size_t len){
+	write(logfd, ch, len);
 	write(logfd, "\n", 1);
 }
 
@@ -28,22 +28,22 @@ int main(int c, char** v){
 	//if(TEST) test();
 
 	int i = 0;	
-	while(i < 8){
+	while(1){
 		char ch;
 		read(ifd, &ch, 1);
+		if(ch == 'q') break;
 		process_message(ch);
-		//sleep(1);
 		++i;
 	}
-	
+	free_mem();
+	logwr("Closing...", 10);
 	
 	return 0;
 }
 
 
 void process_message(char c){
-	write(logfd, &c, 1);
-	write(logfd, "\n", 1);
+	logwr(&c, 1);
 	switch(c){
 		case 'i' :{
 			char msg[unitSize];
@@ -66,6 +66,10 @@ void process_message(char c){
 			write(ofd, unit, unitSize);
 			break;
 		}
+		case 'q':{
+			free_mem();
+
+		}
 		default:
 	}
 }
@@ -76,8 +80,6 @@ void init(char** v){
 	type = v[1];
 	path = v[2];
 	unitSize =  atoi(v[3]);
-	//dup2(STDIN_FILENO, ifd);
-	//dup2(STDOUT_FILENO, ofd);
 	size_t unitCount = 0;
 	size_t fileSize = 0;
 	init_offsets(&used);
@@ -112,6 +114,7 @@ void fm_load(off_t offset, char* ret){
 	if(i == used.size) ret = NULL;
 	lseek(mapfd, offset*unitSize, SEEK_SET);
 	read(mapfd, ret, unitSize);
+	
 }
 
 
@@ -150,20 +153,16 @@ off_t get_insert_offset(){
 
 
 char fm_delete(off_t offset){
-	logwr("in delete\0");
 	if(offset >= used.size) return 0;
-	logwr("1\0");
 	ptrdiff_t i = 0;
 	for(; (i >= 0) && (i < used.size); ++i){
 		if(used.arr[i] == offset) break;
 	}
 	if(i == used.size) return 0;
-	logwr("2\0");
 	
 	if(i != (used.size-1))
 		for(; i < used.size; ++i) *(used.arr+i) = *(used.arr+i+1);
 	--(used.size);
-	logwr("3\0");
 
 	lseek(mapfd, offset*unitSize, SEEK_SET);
 	char* zeros[unitSize];
@@ -173,7 +172,6 @@ char fm_delete(off_t offset){
 	unused.arr[unused.size] = offset;
 	++(unused.size);
 	--unitCount;
-	logwr("4\0");
 
 	return 1;
 }
@@ -200,8 +198,6 @@ void free_mem(){
 	if(used.arr) free(used.arr);
 	if(unused.arr) free(unused.arr);
 }
-
-
 
 
 

@@ -32,6 +32,17 @@ int main(){
 	read(ofd[0], (char*) &offset, sizeof(off_t));
 	printf("offset: %d\n", offset);
 
+
+	offset = 0;
+	char ret[5];
+	write(ifd[1], "l", 1);
+	write(ifd[1], (char*) &offset, sizeof(off_t));
+	read(ofd[0], ret, 5);
+	for(int i = 0; i < 5; ++i){
+		printf("%c", ret[i]);
+	}
+	printf("\n");
+
 	write(ifd[1], &ch, 1);
 	write(ifd[1], "test2", 5);
 	read(ofd[0], (char*) &offset, sizeof(off_t));
@@ -41,7 +52,8 @@ int main(){
 	write(ifd[1], "test3", 5);
 	read(ofd[0], (char*) &offset, sizeof(off_t));
 	printf("offset: %d\n", offset);
-
+	
+	
 	write(ifd[1], &ch, 1);
 	write(ifd[1], "test4", 5);
 	read(ofd[0], (char*) &offset, sizeof(off_t));
@@ -55,22 +67,21 @@ int main(){
 	offset = 2;
 	write(ifd[1], "d", 1);
 	write(ifd[1], (char*) &offset, sizeof(off_t));
+	printf("delete 2\n");
 
 	write(ifd[1], &ch, 1);
 	write(ifd[1], "test6", 5);
 	read(ofd[0], (char*) &offset, sizeof(off_t));
 	printf("offset: %d\n", offset);
 
-
 	offset = 2;
-	char ret[5];
-	write(ifd[1], "l", 1);
+	write(ifd[1], "d", 1);
 	write(ifd[1], (char*) &offset, sizeof(off_t));
-	read(ofd[0], ret, 5);
-	for(int i = 0; i < 5; ++i){
-		printf("%c", ret[i]);
-	}
-	printf("\n");
+	printf("delete 2\n");
+
+	write(ifd[1], "q", 1);
+
+	printf("\nDONE\n");
 }
 
 
