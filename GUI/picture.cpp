@@ -1,10 +1,10 @@
 #include "picture.hpp"
 
 
-// Picture::Picture(){
+Picture::Picture(){
 
-//     return;
-// }
+    return;
+}
 
 Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h){
 
@@ -41,14 +41,14 @@ Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int 
 
 // 
 
-Picture::Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* text, int rect_x, int rect_y, int rect_w, int rect_h){
+Picture::Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* text, int rect_x, int rect_y){
 
     renderer = main_renderer;
     if(renderer == NULL){
         std::cout << "nok\n";
         throw std::invalid_argument("Error: Recieved a null renderer.");
     }
-    surface = TTF_RenderText_Solid(font, text, {0, 0, 0});
+    surface = TTF_RenderText_Blended(font, text, {0, 0, 0});
     if(surface == NULL){
         throw std::invalid_argument("Error creating Picture from font.");
     }
@@ -60,8 +60,8 @@ Picture::Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* text, 
 
     r.x = rect_x;
     r.y = rect_y;
-    r.w = rect_w;
-    r.h = rect_h;
+    r.w = surface->w;
+    r.h = surface->h;
 
     rect = &r;
 
