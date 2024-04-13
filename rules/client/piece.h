@@ -37,7 +37,6 @@ public:
 
 	std::queue<void*> tasks;
 
-	std::mutex mutex;
 	void cancel();
 
 	void reveal();
@@ -47,7 +46,7 @@ public:
 	bool turn(Heading* h);
 	bool set_target(int x, int y);
 
-	bool move(Heading h);
+	bool move(Heading h, int endX, int endY);
 	void bump(int x, int y);
 	bool remove();
 	bool attack();
@@ -77,7 +76,7 @@ extern int piecesCreated[NUM_COLORS][NUM_PIECE_TYPES];
 bool inc_created_pieces(int type, int color);
 Piece* create_piece(int type, int _color);
 void push_piece(Piece* piece);
-bool place_piece(Piece* piece, int x, int y);
+bool place_piece(Piece* piece, int x, int y, bool init);
 void default_placement();
 
 void reveal_pieces();

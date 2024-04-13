@@ -9,6 +9,7 @@
 #include <math.h>
 #include <iostream>
 
+#define PHASE_TIME_LIMIT 30
 
 #define WIDTH 15
 const int DIAG = (int) (WIDTH/sqrt(2));
@@ -209,11 +210,17 @@ const int VISION[NUM_PIECE_TYPES] =
 #define SOUTHEAST (headings[7])
 
 
-enum STANCES{
+enum STANCES
+{
 	ACTION,
 	DEFEND,
 	STEALTH
 };
 
+enum TASKS
+{
+	MOVEMENT,
+	CANCEL
+};
 
 #endif

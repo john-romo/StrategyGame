@@ -167,7 +167,15 @@ void clean_clients();
 
 // utils
 void sec_sleep(float period);
+void print_message(int* msg, int size);
 
+//game phases
+void placement_phase();
+
+
+// process message
+void process_message(int* msg);
+void process_initial_placement_message(int* msg);
 
 
 #endif

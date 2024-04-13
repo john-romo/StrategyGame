@@ -219,6 +219,7 @@ bool init_game(Game* newgame){
 	char ch = 'a';
 	for(int i = 0; i < NUM_COLORS; ++i){
 		Client* client = newgame->clients[i];
+		newgame->clients[i]->color = i;
 		if(!smart_write(client->socket, (char*)&i, sizeof(int)) // write client color
 				|| !smart_write(client->socket, (char*)&(newgame->id), sizeof(uint64_t))){ // write client game id
 			set_client_connection_status(client, DEAD);
@@ -251,6 +252,12 @@ void run_game(){
 	flag = create_flag();
 	std::thread tickThread(tick);
 
+	placement_phase();
+	int phaseTime = 0;
+
+	sec_sleep(1); // for testing
+	set_flag(flag->movementPhase, true);
+
 	while(1){
 		int exitCode = game_status_check();
 		if(exitCode > -1){
@@ -264,8 +271,15 @@ void run_game(){
 			std::cout << "Game #" << game->id << " shutdown.\n";
 			exit(exitCode);
 		}
+		
 
-		sec_sleep(1.001);
+		if(phaseTime > PHASE_TIME_LIMIT){
+			set_flag(flag->movementPhase, !check_flag(flag->movementPhase));
+		}
+
+		sec_sleep(1);
+		+phaseTime;
+
 	}
 }
 
@@ -303,23 +317,59 @@ void tick(){
 			connected = connected && check;
 		}
 
-		if(dead) ch = 'x'; 
-		else if(!connected) ch = 'd';
-		else ch = check_flag(flag->movementPhase) ? 'u' : 'a';		
+		if(!check_flag(flag->movementPhase) || dead || !connected){
+			if(dead) ch = 'x'; 
+			else if(!connected) ch = 'd';
+			else ch = 'a';		
+			for(int i = 0; i < game->clients.size(); ++i){
+				check = smart_write(game->clients[i]->tickSocket, &ch, 1);
+				if(!check) set_client_connection_status(game->clients[i], DISCONNECTED);
+				connected = connected && check;
+			}
+			
+			if(dead){
+				break;
+			}
+			if(!connected){
+				set_flag(flag->disconnect, true);
+				break;
+			}
+		}
+		else{
+			std::shuffle(std::begin(game->clients), std::end(game->clients), rng);
+
+			ch = 'U';
+			smart_write(game->clients.at(0)->tickSocket, &ch, 1);
+			int size;
+			int* msg;
+			smart_read(game->clients.at(0)->socket, (char*) &size, sizeof(int));
+			smart_read(game->clients.at(0)->socket, (char*) msg, (size-1)*sizeof(int));
+
+			std::cout << "U read done: size: ";
+			print_message(&size, 1);
+			std::cout << "msg: ";
+			print_message(msg, size-1);
+
+			ch = 'u';
+			smart_write(game->clients.at(1)->tickSocket, &ch, 1);
+
+			smart_write(game->clients.at(1)->socket, (char*) &size, sizeof(int));
+			smart_write(game->clients.at(1)->socket, (char*) msg, (size-1)*sizeof(int));
+
+			std::cout << "u write done\n";
+
+			smart_read(game->clients.at(1)->socket, (char*) &size, sizeof(int));
+			smart_read(game->clients.at(1)->socket, (char*) msg, (size-1)*sizeof(int));
+
+			std::cout << "u read done\n";
+			print_message(msg, size-1);
+
+			smart_write(game->clients.at(0)->socket, (char*) &size, sizeof(int));
+			smart_write(game->clients.at(0)->socket, (char*) msg, (size-1)*sizeof(int));
+
+			std::cout << "U write done\n";
+		}	
 		
-		for(int i = 0; i < game->clients.size(); ++i){
-			check = smart_write(game->clients[i]->tickSocket, &ch, 1);
-			if(!check) set_client_connection_status(game->clients[i], DISCONNECTED);
-			connected = connected && check;
-		}
-		
-		if(dead){
-			break;
-		}
-		if(!connected){
-			set_flag(flag->disconnect, true);
-			break;
-		}
 	
 		sec_sleep(0.5);
 	}
@@ -595,18 +645,72 @@ void sec_sleep(float period){
 }
 
 
+void print_message(int* m, int size){
+	for(int i = 0; i < size; ++i){
+		printf("%d ", m[i]);
+	}
+	printf("\n");
+}
+
+
+
+/////////////////////////// GAME PHASES ////////////////////////////
+
+void placement_phase(){
+	std::vector<int*> msgs;
+	std::vector<int*> sizes;
+	std::shuffle(std::begin(game->clients), std::end(game->clients), rng);
+	for(Client* c : game->clients){
+		int* size = new int;
+		int* msg = new int[C_INITIAL_PLACEMENT_SIZE];
+		smart_read(c->socket, (char*)size, sizeof(int));
+		smart_read(c->socket, (char*)msg, (C_INITIAL_PLACEMENT_SIZE-1)*sizeof(int));
+
+		sizes.push_back(size);
+		msgs.push_back(msg);
+		
+	}
+	for(Client* c : game->clients){
+		for(int i = 0; i < NUM_COLORS; ++i){
+			if(c->color == i){
+				smart_write(c->socket, (char*) sizes[i], sizeof(int));
+				smart_write(c->socket, (char*) msgs[i], (*(sizes.at(i))-1)*sizeof(int));
+				delete sizes[i];
+				delete msgs[i];
+			}
+		}
+	}
+	
+	std::cout << "Placement phase completed\n";
+}
+
+
+/////////////////////////// PROCESS MESSAGES ///////////////////////
+
+/*
+void process_message(int* msg){
+	switch(msg[C_TYPE]){
+	 	case MSG_TYPE_INITIAL_PLACEMENT:
+			process_initial_placement_message(msg);
+			return;
+		default:
+			return;
+	}
+}
+
+
+void process_initial_placement_message(int* msg){
+	write_message(clients[!(msg[C_COLOR])]->socket, msg);
+}
+*/
+
+
+
+
 
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-
-
-
-
-
 
 
 
@@ -725,35 +829,6 @@ void game_killed(){
 }
 
 
-/////////////////////////// GAME PHASES ////////////////////////////
-
-void placement_phase(){
-	int white = clients.at(WHITE)->socket;
-	int black = clients.at(BLACK)->socket;
-	int* wMsg = read_message(white);
-	int* bMsg = read_message(black);
-	process_message(bMsg);
-	process_message(wMsg);
-}
-
-
-/////////////////////////// PROCESS MESSAGES ///////////////////////
-
-void process_message(int* msg){
-	switch(msg[C_TYPE]){
-	 	case MSG_TYPE_INITIAL_PLACEMENT:
-			process_initial_placement_message(msg);
-			return;
-		default:
-			return;
-	}
-}
-
-
-void process_initial_placement_message(int* msg){
-	write_message(clients[!(msg[C_COLOR])]->socket, msg);
-}
-
 
 /////////////////////////// WRITE MESSAGES /////////////////////////
 
@@ -849,13 +924,6 @@ void init_epoll(int* epollfd, struct epoll_event* event){
 
 
 
-
-void print_message(int* m, int size){
-	for(int i = 0; i < size; ++i){
-		printf("%d ", m[i]);
-	}
-	printf("\n");
-}
 
 
 
