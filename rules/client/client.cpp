@@ -214,6 +214,7 @@ int* create_update_message(){
 	msgVect.push_back(player->color);
 
 	for(Piece* p : pieces[player->color]){
+		printf("IN\n");
 		if(p->tasks.empty()) continue;
 		Task* t = (Task*) p->tasks.front();
 		if(t->type != MOVEMENT) continue;
