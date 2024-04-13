@@ -19,6 +19,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <thread>
 
 #include "board.h"
 #include "player.h"
@@ -44,15 +45,18 @@ void start_tick();
 
 // phases
 void placement_phase();
+void movement_test();
 
 
 // process message
 void process_message(int* msg);
 void process_initial_placement_message(int* msg);
+void process_update_message(int* msg);
 
 
 // create message
 int* create_initial_placement_message();
+int* create_update_message();
 
 
 // tick

@@ -63,13 +63,14 @@ void game(int color){
 	std::cout << "Game started.\n";
 	flags = init_flags();
 	std::cout << "Flags initialized.\n";
-	tick();
+	std::thread tickThread(tick);
 	std::cout << "Tick started.\n";
 
 
 
-	//placement_phase();
-	//print_board();
+	placement_phase();
+	print_board();
+	movement_test();
 
 	while(!check_flag(flags->shutdown)){
 		if(check_flag(flags->disconnect)){
@@ -90,12 +91,41 @@ void placement_phase(){
 	default_placement();
 
 	int* m = create_initial_placement_message();
+	print_message(m, C_INITIAL_PLACEMENT_SIZE);
 
 	write_message(m);
 
 	int* msg = read_message();
 	process_message(msg);
 }
+
+void movement_test(){
+	if(player->color){
+		Square* s1;
+		if(!(s1 = get_square(5, 24))) std::cerr << "ERROR: movement test failed at 1\n";
+		Piece* p1;
+		if(!(p1 = s1->piece)) std::cerr << "ERROR: movement test failed at 2\n";
+		Square* s2;
+		if(!(s2 = get_square(7, 24))) std::cerr << "ERROR: movement test failed at 3\n";
+		Piece* p2;
+		if(!(p2 = s2->piece)) std::cerr << "ERROR: movement test failed at 4\n";
+		p1->move(p1->heading, 5, 14);
+		p2->move(p2->heading, 7, 14);
+	}
+	else{
+		Square* s1;
+		if(!(s1 = get_square(5, 8))) std::cerr << "ERROR: movement test failed at 1\n";
+		Piece* p1;
+		if(!(p1 = s1->piece)) std::cerr << "ERROR: movement test failed at 2\n";
+		Square* s2;
+		if(!(s2 = get_square(7, 8))) std::cerr << "ERROR: movement test failed at 3\n";
+		Piece* p2;
+		if(!(p2 = s2->piece)) std::cerr << "ERROR: movement test failed at 4\n";
+		p1->move(p1->heading, 5, 18);
+		p2->move(p2->heading, 7, 18);
+	}
+}
+
 
 
 /////////////////////////// PROCESS MESSAGE ////////////////////////
@@ -105,6 +135,8 @@ void process_message(int* msg){
 	 	case MSG_TYPE_INITIAL_PLACEMENT:
 			process_initial_placement_message(msg);
 			return;
+		case MSG_TYPE_UPDATE:
+			process_update_message(msg);
 		default:
 			return;
 	}
@@ -112,6 +144,7 @@ void process_message(int* msg){
 
 
 void process_initial_placement_message(int* msg){
+	std::cout << "Placing opponent pieces...\n";
 	int color = msg[C_COLOR];
 	int size = C_INITIAL_PLACEMENT_SIZE;
 	int startpos = C_INITIAL_PLACEMENT_BODY;
@@ -121,7 +154,33 @@ void process_initial_placement_message(int* msg){
 		int pos = startpos + (i*C_IPP_SIZE);
 		if(pos >= size-1) break;
 		Piece* p = create_piece(msg[pos+C_IPP_TYPE], !player->color);
-		place_piece(p, msg[pos+C_IPP_X], msg[pos+C_IPP_Y]);
+		place_piece(p, msg[pos+C_IPP_X], msg[pos+C_IPP_Y], false);
+		++i;
+	}
+}
+
+
+void process_update_message(int* msg){
+	std::cout << "updating boar...\n";
+	int color = msg[C_COLOR];
+	int size = msg[C_SIZE];
+	int startpos = C_UPDATE_BODY;
+	int i = 0;
+
+	while(1){
+		int pos = startpos + (i*C_UPDATE_SIZE);
+		if(pos >= size-1) break;
+		int startX = msg[pos+C_UPDATE_START_X];
+		int startY = msg[pos+C_UPDATE_START_Y];
+		int endX = msg[pos+C_UPDATE_END_X];
+		int endY = msg[pos+C_UPDATE_END_Y];
+		int stance = msg[pos+C_UPDATE_STANCE];
+		Square* s;
+		if(!(s = get_square(startX, startY))) std::cerr << "ERROR: Incorrect update message\n";
+		Piece* p;
+		if(!(p = s->piece)) std::cerr << "ERROR: Incorrect update message\n";
+		if(!place_piece(p, endX, endY, false)) std::cerr << "ERROR: Incorrect update message\n";
+		p->stance = stance;
 		++i;
 	}
 }
@@ -148,27 +207,48 @@ int* create_initial_placement_message(){
 	return msg;
 }
 
+int* create_update_message(){
+	std::vector<int> msgVect;
+	msgVect.push_back(0); //temporary
+	msgVect.push_back(MSG_TYPE_UPDATE);
+	msgVect.push_back(player->color);
+
+	for(Piece* p : pieces[player->color]){
+		if(p->tasks.empty()) continue;
+		Task* t = (Task*) p->tasks.front();
+		if(t->type != MOVEMENT) continue;
+		msgVect.push_back(p->x);
+		msgVect.push_back(p->y);
+		msgVect.push_back(p->x + t->heading.x);
+		msgVect.push_back(p->y + t->heading.y);
+		msgVect.push_back(p->stance);
+	}
+	
+	int size = msgVect.size();
+	msgVect.at(0) = size;
+	int* msg = new int[size];
+	for(int i = 0; i < size; ++i){
+		msg[i] = msgVect.at(i);
+	}
+	return msg;
+}
 
 /////////////////////////// TICK ///////////////////////////////////
 
 void tick(){
-	int pid;
-	if(!(pid = fork())){
-		while(1){
-			if(check_flag(flags->shutdown)){
-				std::cout << "Tick process shutdown.\n";
-				exit(0);
-			}
+	while(1){
+		if(check_flag(flags->shutdown)){
+			std::cout << "Tick process shutdown.\n";
+			exit(0);
+		}
 
-			char ch = player->color;
-			
-			write(ticksock, &ch, 1);
-			read(ticksock, &ch, 1);
-			printf("tick: %d\n", ch);
-			process_tick(ch);
-		}		
-	}
-	tickProcessId = pid;
+		char ch = player->color;
+		
+		write(ticksock, &ch, 1);
+		read(ticksock, &ch, 1);
+		printf("tick: %d\n", ch);
+		process_tick(ch);
+	}		
 }
 
 
@@ -181,6 +261,38 @@ void process_tick(char tick){
 		case 'a':
 			set_flag(flags->disconnect, false);
 			break;
+		case 'U':{
+			std::cout << "Start Phase U\n";
+			movement();
+			std::cout << "Movement done\n";
+			int* msg = create_update_message();
+			std::cout << "Create message done: ";
+			print_message(msg, msg[C_SIZE]);
+			write_message(msg);
+			std::cout << "Write message done\n";
+			msg = read_message();
+			std::cout << "Read message done\n";
+			process_message(msg);
+			std::cout << "Process message done\n";
+			std::cout << "Move Phase Done\n";
+			break;
+		}
+		case 'u':{
+			std::cout << "Start Phase u\n";
+			int* msg = read_message();
+			std::cout << "Read message done\n";
+			process_message(msg);
+			std::cout << "Process message done\n";
+			movement();
+			std::cout << "Movement done\n";
+			msg = create_update_message();
+			std::cout << "Create message done: ";
+			print_message(msg, msg[C_SIZE]);
+			write_message(msg);
+			std::cout << "Write message done\n";
+			std::cout << "Move Phase Done\n";
+			break;
+		}
 		default:
 			std::cout << "Opponent disconnected. " << (int)tick << " seconds to reconnect...\n" ;
 			set_flag(flags->disconnect, true);

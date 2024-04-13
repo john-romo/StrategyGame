@@ -17,20 +17,19 @@
 #include "heading.h"
 
 extern bool gameOver;
-extern bool movementPhase;
 
 class Task{
 public:
 	int type;
 	Piece* piece;
 	
-	int headingID;
+	Heading heading;
 
-	Task(int _t, Piece* _p, int _h);
+	Task(int _t, Piece* _p, Heading _h);
 };
 
 
 
-void movement_phase();
+void movement();
 
 #endif

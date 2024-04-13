@@ -64,13 +64,14 @@ void create_pieces(){
 	}
 }
 
-bool place_piece(Piece* piece, int x, int y){
-	if(piece->placed) return false;
-
-	int bottom = startBounds[piece->color].first;
-	int top = startBounds[piece->color].second;
-
-	if(!((y >= bottom) && (y <= top))) return false;
+bool place_piece(Piece* piece, int x, int y, bool init){
+	
+	if(init){
+		if(piece->placed) return false;
+		int bottom = startBounds[piece->color].first;
+		int top = startBounds[piece->color].second;
+		if(!((y >= bottom) && (y <= top))) return false;
+	}
 	
 	Square* s;
 	if(!(s = get_square(x, y))) return false;
@@ -96,34 +97,34 @@ void default_placement(){
 	int ymod = player->color ? -1 : 1;
 	
 	//king
-	place_piece(ps[0], CENTER-1, bottom+ymod);
+	place_piece(ps[0], CENTER-1, bottom+ymod, true);
 	//engineer
-	place_piece(ps[1], CENTER-2, top-(2*ymod));
-	place_piece(ps[2], CENTER+2, top-(2*ymod));
+	place_piece(ps[1], CENTER-2, top-(2*ymod), true);
+	place_piece(ps[2], CENTER+2, top-(2*ymod), true);
 	//scout
-	place_piece(ps[3], CENTER-4, top-(2*ymod));
-	place_piece(ps[4], CENTER+4, top-(2*ymod));
+	place_piece(ps[3], CENTER-4, top-(2*ymod), true);
+	place_piece(ps[4], CENTER+4, top-(2*ymod), true);
 	//searchlight
-	place_piece(ps[5], CENTER+1, bottom+ymod);
+	place_piece(ps[5], CENTER+1, bottom+ymod, true);
 	//gaurd
-	place_piece(ps[6], CENTER-4, bottom+(4*ymod));
-	place_piece(ps[7], CENTER-2, bottom+(4*ymod));
-	place_piece(ps[8], CENTER, bottom+4*ymod);
-	place_piece(ps[9], CENTER+2, bottom+(4*ymod));
+	place_piece(ps[6], CENTER-4, bottom+(4*ymod), true);
+	place_piece(ps[7], CENTER-2, bottom+(4*ymod), true);
+	place_piece(ps[8], CENTER, bottom+4*ymod, true);
+	place_piece(ps[9], CENTER+2, bottom+(4*ymod), true);
 	//rifleman
-	place_piece(ps[10], CENTER-7, top-ymod);
-	place_piece(ps[11], CENTER-5, top-ymod);
-	place_piece(ps[12], CENTER-3, top-ymod);
-	place_piece(ps[13], CENTER-1, top-ymod);
-	place_piece(ps[14], CENTER+1, top-ymod);
-	place_piece(ps[15], CENTER+3, top-ymod);
-	place_piece(ps[16], CENTER+5, top-ymod);
-	place_piece(ps[17], CENTER+7, top-ymod);
+	place_piece(ps[10], CENTER-7, top-ymod, true);
+	place_piece(ps[11], CENTER-5, top-ymod, true);
+	place_piece(ps[12], CENTER-3, top-ymod, true);
+	place_piece(ps[13], CENTER-1, top-ymod, true);
+	place_piece(ps[14], CENTER+1, top-ymod, true);
+	place_piece(ps[15], CENTER+3, top-ymod, true);
+	place_piece(ps[16], CENTER+5, top-ymod, true);
+	place_piece(ps[17], CENTER+7, top-ymod, true);
 	//specops
-	place_piece(ps[18], CENTER-9, top-ymod);
-	place_piece(ps[19], CENTER-11, top-ymod);
-	place_piece(ps[20], CENTER+9, top-ymod);
-	place_piece(ps[21], CENTER+11, top-ymod);
+	place_piece(ps[18], CENTER-9, top-ymod, true);
+	place_piece(ps[19], CENTER-11, top-ymod, true);
+	place_piece(ps[20], CENTER+9, top-ymod, true);
+	place_piece(ps[21], CENTER+11, top-ymod, true);
 }
 
 
@@ -394,23 +395,27 @@ bool Piece::set_target(int x, int y){
 //////////// ACTIONS ///////////////////////////////////////////////////////////////////////////
 
 void Piece::cancel(){
-	while(!this->tasks.empty()){
-		delete((Task*) this->tasks.front());
-		this->tasks.pop();
-	}
+	this->tasks.push(new Task(CANCEL, this, NORTH));
 }
 
 //--------------------------------------------------------------------------------------------//
 
-bool Piece::move(Heading h){
+bool Piece::move(Heading h, int endX, int endY){
 	if(!this->placed) return false;
 	if(this->type == SEARCHLIGHT) return false;
 	if(this->stance != ACTION) return false;
+	if(!get_square(endX, endY)) return false;
 	
-	if(!players[this->color]->drain_stamina(STAMINA_DRAIN[this->type]))
-		return false;
-
-	place_piece(this, this->x + h.x, this->y + h.y);
+	//if(!players[this->color]->drain_stamina(STAMINA_DRAIN[this->type]))
+	//	return false;
+	
+	int startX = this->x;
+	int startY = this->y;
+	
+	while((startX != endX) || (startY != endY))
+		this->tasks.push(new Task(MOVEMENT, this, h));
+		startX += h.x;
+		startY += h.y;
 
 	return true;
 }
@@ -499,7 +504,7 @@ bool Piece::reassign(int type){
 
 	delete_piece(target);
 	Piece* p = create_piece(type, this->color);
-	place_piece(p, pos->x, pos->y);
+	place_piece(p, pos->x, pos->y, false);
 	return true;
 }
 
