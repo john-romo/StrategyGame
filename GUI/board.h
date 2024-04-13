@@ -42,6 +42,7 @@ public:
 
 
 Square* get_square(int x, int y);
+Square* get_square_old(int x, int y);
 
 extern std::unordered_map<uint64_t, Square*> board;
 

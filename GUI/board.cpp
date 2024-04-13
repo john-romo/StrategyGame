@@ -58,7 +58,7 @@ void Square::render(int xmod, int ymod){
 }
 
 
-Square* get_square(int x, int y){ // TODO CHECK THIS
+Square* get_square(int x, int y){ //TODO CHECK THIS
 	Square* s;
 	try{
 		uint64_t top = x;
@@ -67,6 +67,19 @@ Square* get_square(int x, int y){ // TODO CHECK THIS
 		return(s);
 	}
 	catch(...){
+		printf("Error: returned null square\n");
+		return(NULL);
+	}
+}
+
+Square* get_square_old(int x, int y){
+	Square* s;
+	try{
+		s = board.at((x << 8) | y);
+		return(s);
+	}
+	catch(...){
+		if(DEBUG) std::cerr << "ERROR in get_square() --> INVALID KEY\n";
 		return(NULL);
 	}
 }
@@ -131,6 +144,7 @@ void create_board_filled(SDL_Renderer* renderer){
 				type = "grass4";
 			}
 			get_square(x,y)->picture = new Picture(renderer, type, 0, 0, 32, 32);
+			std::cout << x << y << std::endl;
 		}
 	}
 }
@@ -138,7 +152,7 @@ void create_board_filled(SDL_Renderer* renderer){
 void mark_valid_tiles(SDL_Renderer* renderer){
 	for(int y = 0; y < DIAG - 1; ++y){
 		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			get_square(x,y)->is_valid = true;
 			// Picture* p = get_square(x,y)->picture;
 			// get_square(x,y)->picture = nullptr;
@@ -146,33 +160,41 @@ void mark_valid_tiles(SDL_Renderer* renderer){
 			// get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
 		}
 	}
+	printf("first mark ok\n");
 	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
 		for(int x = 0; x < HEIGHT; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			//Square* s = new Square(x,y,renderer);
 			get_square(x,y)->is_valid = true;
 			// get_square(x,y)->picture->free_picture();
 			// get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
 		}
 	}
+	printf("2nd mark ok\n");
 	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
 		for(int x = 0 + d; x < HEIGHT - d; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			// Square* s = new Square(x,y,renderer);
 			get_square(x,y)->is_valid = true;
 			// get_square(x,y)->picture->free_picture();
 			// get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
 		}
 	}
+	printf("3rd mark ok\n");
 
 	for(int y = 0; y < HEIGHT; ++y){
 		for(int x = 0; x < HEIGHT; ++x){
+			printf("here1\n");
 			if(get_square(x,y)->is_valid == false){
+				printf("here2\n");
 				get_square(x,y)->picture->free_picture();
+				printf("here3\n");
 				get_square(x,y)->picture = new Picture(renderer, "rock", 0, 0, 32, 32);
+				printf("here4\n");
 			}
 		}
 	}
+	printf("last mark ok\n");
 }
 
 

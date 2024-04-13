@@ -33,6 +33,7 @@ int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos
 int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y);
 Tile* create_tile(SDL_Renderer* renderer, int x, int y);
 int create_map(SDL_Renderer* renderer);
+void start_game_old(SDL_Renderer* renderer);
 
 
 int main(int, char**){
@@ -152,7 +153,7 @@ int main(int, char**){
 
     // sets up game rules
 
-	//start_game(renderer);
+	
 
  	//printf("%s\n\n", run_tests());
 	//print_board();
@@ -197,9 +198,13 @@ int main(int, char**){
         }else if(*menu_status == SETTINGS){ // Settings Page
             get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed, *on1, *off1);
         }else if(*menu_status == SELECTION){ // Extra page between Home and the game (skipped for now)
-            //get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
             join_game(renderer);
+            //start_game(0, renderer);
+            //start_game_old(renderer);
+            get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
+            
         }else{ // this is the game
+            printf("GOT TO THE GAME\n");
             // SECTION 1: PIECE SELECTION AND PLACEMENT
             camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed);
             test_camera.change_camera_pos(mouse_x, mouse_y);
@@ -328,15 +333,15 @@ int main(int, char**){
 }
 
 
-// void start_game(SDL_Renderer* renderer){
-// 	printf("\n");
-// 	create_players();
-// 	create_headings();
-// 	//create_board(renderer);
-// 	create_board_filled(renderer);
-// 	mark_valid_tiles(renderer);
+void start_game_old(SDL_Renderer* renderer){
+	printf("\n");
+	create_players();
+	create_headings();
+	//create_board(renderer);
+	create_board_filled(renderer);
+	mark_valid_tiles(renderer);
 
-// }
+}
 
 
 int init_png_and_font(){

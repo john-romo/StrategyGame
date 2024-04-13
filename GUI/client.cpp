@@ -84,8 +84,8 @@ int join_game(SDL_Renderer* renderer){
 		read(sock, &c, 1);
 		if(c != 'a') sec_sleep(0.1);
 	}
-
 	game(color, renderer);
+	printf("its done\n");
 	return 0;
 }
 
@@ -269,12 +269,18 @@ void split_write(char* m, int len){
 /////////////////////////// INIT ///////////////////////////////////
 
 void start_game(int color, SDL_Renderer* renderer){
+	printf("creating players...\n");
 	create_players();
 	player = players[color];
+	printf("creating headings...\n");
 	create_headings();
-	create_board(renderer);
+	printf("creating board...\n");
+	//create_board(renderer);
+	create_board_filled(renderer);
 	//create_pieces();
+	printf("marking valid tiles...\n");
 	mark_valid_tiles(renderer);
+	printf("done!\n");
 }
 
 
