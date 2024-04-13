@@ -70,7 +70,7 @@ void game(int color){
 
 	placement_phase();
 	print_board();
-	movement_test();
+	//movement_test();
 
 	while(!check_flag(flags->shutdown)){
 		if(check_flag(flags->disconnect)){
