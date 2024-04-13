@@ -14,13 +14,11 @@ Task::Task(int _t, Piece* _p, Heading _h){
 void movement(){
 	std::vector<Task*> tasks;
 		
-	for(int i = 0; i < NUM_COLORS; ++i){
-		for(Piece* p : pieces[i]){
-			if(!p->tasks.empty()){
-				Task* t = (Task*) p->tasks.front();
-				p->tasks.pop();
-				tasks.push_back(t);
-			}
+	for(Piece* p : pieces[player->color]){
+		if(!p->tasks.empty()){
+			Task* t = (Task*) p->tasks.front();
+			p->tasks.pop();
+			tasks.push_back(t);
 		}
 	}
 
