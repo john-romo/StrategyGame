@@ -24,6 +24,7 @@
 #include "client.h"
 
 enum menu {HOME, SETTINGS, SELECTION, GAME};
+enum game_status {NOT_ON, PLACEMENT, MOVEMENT};
 enum setting { ON, OFF };
 
 void assign_tile_pointers(Tile* (*map)[100][100]);
@@ -41,6 +42,7 @@ int main(int, char**){
 	// GUI and SDL stuff
 	const int fps = 50;
     const int frame_delay = 1000 / fps;
+    int color = 0;
     Uint64 frame_start_time = 0;
     int frame_duration = 0;
     menu menu_stat = HOME;
@@ -49,6 +51,7 @@ int main(int, char**){
     setting* fx = &sound;
     setting mus = OFF;
     setting* music = &mus;
+    game_status the_game_status = NOT_ON;
 	SDL_Init(SDL_INIT_EVERYTHING);
     SDL_Window* window = SDL_CreateWindow("Cool Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
@@ -115,6 +118,7 @@ int main(int, char**){
     Button2* b5 = new Button2(renderer, "play", 0,430,60,30);
     Button2* on1 = new Button2(renderer, "on", 500, 200, 60, 30);
     Button2* off1 = new Button2(renderer, "off", 500, 200, 60, 30);
+    Button2* placement_ready = new Button2(renderer, "play", 540, 440,60,30);
 
     Button2* placement_buttons[8];
 
@@ -198,13 +202,13 @@ int main(int, char**){
         }else if(*menu_status == SETTINGS){ // Settings Page
             get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed, *on1, *off1);
         }else if(*menu_status == SELECTION){ // Extra page between Home and the game (skipped for now)
-            join_game(renderer);
+            color = join_game(renderer);
             //start_game(0, renderer);
             //start_game_old(renderer);
+            the_game_status = PLACEMENT;
             get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
             
         }else{ // this is the game
-            printf("GOT TO THE GAME\n");
             // SECTION 1: PIECE SELECTION AND PLACEMENT
             camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed);
             test_camera.change_camera_pos(mouse_x, mouse_y);
@@ -243,20 +247,6 @@ int main(int, char**){
                 current_selected_button->render(-1, -1, false);
             }
 
-            for(Button2* placement_button : placement_buttons){ // check if each placement button is clicked
-                placement_button->update_button(left_pressed, &mouse_rect);
-                placement_button->render();
-                if(placement_button->was_clicked()){
-                current_selected_button = placement_button;
-                std::cout << "changed selected piece" << std::endl;
-                if(current_selected_piece != nullptr){ // deselect currently selected piece if there is one.
-                    current_selected_piece->is_selected = false;
-                    current_selected_piece = nullptr;
-                }
-            }
-
-            }
-
             if(right_pressed){
                 current_selected_button = nullptr;
                 if(current_selected_piece != nullptr){
@@ -265,37 +255,65 @@ int main(int, char**){
                 }
             }
 
-            if(left_pressed && !right_pressed && current_selected_button != nullptr && s->occupied == false && s->is_valid){
-                // create new Piece
-                int type = KING;
-                if(current_selected_button->type == "warning") type = RIFLEMAN;
-                else if(current_selected_button->type == "king") type = KING;
-                else if(current_selected_button->type == "engineer") type = ENGINEER;
-                else if(current_selected_button->type == "scout") type = SCOUT;
-                else if(current_selected_button->type == "searchlight") type = SEARCHLIGHT;
-                else if(current_selected_button->type == "guard") type = GUARD;
-                else if(current_selected_button->type == "rifleman") type = RIFLEMAN;
-                else if(current_selected_button->type == "specops") type = SPECOPS;
-                else if(current_selected_button->type == "paratrooper") type = PARATROOPER;
+            if(the_game_status == PLACEMENT){
+                for(Button2* placement_button : placement_buttons){ // check if each placement button is clicked
+                    placement_button->update_button(left_pressed, &mouse_rect);
+                    placement_button->render();
+                    if(placement_button->was_clicked()){
+                        current_selected_button = placement_button;
+                        std::cout << "changed selected piece" << std::endl;
+                        if(current_selected_piece != nullptr){ // deselect currently selected piece if there is one.
+                            current_selected_piece->is_selected = false;
+                            current_selected_piece = nullptr;
+                        }
+                    }
+                }
 
-                Piece* p = create_piece(type, WHITE);
-                if(p == NULL){
-                    std::cout << "no more Riflemen!" << std::endl;
-                }else{
-                    p->button = new Button2(renderer, "warning", 0,0,32,32);
+                if(left_pressed && !right_pressed && current_selected_button != nullptr && s->occupied == false && s->is_valid){
+                    // create new Piece
+                    int type = KING;
+                    if(current_selected_button->type == "warning") type = RIFLEMAN;
+                    else if(current_selected_button->type == "king") type = KING;
+                    else if(current_selected_button->type == "engineer") type = ENGINEER;
+                    else if(current_selected_button->type == "scout") type = SCOUT;
+                    else if(current_selected_button->type == "searchlight") type = SEARCHLIGHT;
+                    else if(current_selected_button->type == "guard") type = GUARD;
+                    else if(current_selected_button->type == "rifleman") type = RIFLEMAN;
+                    else if(current_selected_button->type == "specops") type = SPECOPS;
+                    else if(current_selected_button->type == "paratrooper") type = PARATROOPER;
+
+                    Piece* p = create_piece(type, color);
                     if(p == NULL){
-                        throw std::invalid_argument("Error creating Piece. Invalid arguments.");
-                    }
-                    if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos))){
-                        std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
-                        current_selected_button = nullptr;
+                        std::cout << "no more Riflemen!" << std::endl;
                     }else{
-                        std::cout << "error: didn't place piece (square occupied)" << std::endl;
+                        p->button = new Button2(renderer, "warning", 0,0,32,32);
+                        if(p == NULL){
+                            throw std::invalid_argument("Error creating Piece. Invalid arguments.");
+                        }
+                        if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos))){
+                            std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
+                            current_selected_button = nullptr;
+                        }else{
+                            std::cout << "error: didn't place piece (square occupied)" << std::endl;
+                        }
                     }
+                }
+                placement_ready->update_button(left_pressed, &mouse_rect);
+                placement_ready->render();
+                if(placement_ready->was_clicked()){
+                    placement_phase();
+                    printf("both players ready\n");
+                    the_game_status = MOVEMENT;
                 }
             }
 
             // SECTION 2: PIECE SELECTION AND MOVEMENT
+
+            
+
+            if(the_game_status == MOVEMENT){
+                printf("at movement phase\n");
+            }
 
             
         }

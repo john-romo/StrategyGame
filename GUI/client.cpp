@@ -86,7 +86,7 @@ int join_game(SDL_Renderer* renderer){
 	}
 	game(color, renderer);
 	printf("its done\n");
-	return 0;
+	return color;
 }
 
 
@@ -130,6 +130,7 @@ void placement_phase(){
 
 	int* msg = read_message();
 	process_message(msg);
+	return;
 }
 
 
