@@ -14,9 +14,10 @@
 #include "piece.h"
 #include "heading.h"
 #include "player.h"
+#include "task.h"
 
 
-const char* run_tests();
+void run_tests();
 void test_player_init();
 void test_player_stamina();
 void test_square_get();
@@ -30,5 +31,6 @@ void test_piece_stance();
 void test_piece_attack();
 void test_piece_repair();
 void test_piece_reassign();
+void test_task_creation();
 
 #endif

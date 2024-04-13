@@ -3,8 +3,9 @@
 #ifndef _PIECE_H
 #define _PIECE_H
 
+#include <queue>
 #include <vector>
-#include <algorithm>
+#include <mutex>
 
 #include "default.h"
 #include "heading.h"
@@ -13,54 +14,55 @@
 
 class Piece{
 public:
-	const u8 type;
-	const u8 color;
+	int id;
+	const int type;
+	const int color;
 
-	i8 health;
-	i8 armor;
+	int health;
+	int armor;
 	 
 	bool placed;
-	u8 x;
-	u8 y;
+	int x;
+	int y;
 
 	Heading heading;	
 
-	u8 stance;
+	int stance;
 
 	void* square; 
 	void* targetSquare;
 
 	std::vector<void*> visibleSquares;
-	std::vector<void*> targetableSquares;
 	
-	Piece(u8 _type, u8 _color);
-	//Piece(u8 _type, u8 _color);
+	Piece(int _type, int _color);
+
+	std::queue<void*> tasks;
+
+	std::mutex mutex;
+	void cancel();
 
 	void reveal();
 	void unreveal();
 
-	bool set_stance(u8 s);
+	bool set_stance(int s);
 	bool turn(Heading* h);
-	bool set_target(u8 x, u8 y);
+	bool set_target(int x, int y);
 
-	bool move(u8 x, u8 y);
+	bool move(Heading h);
+	void bump(int x, int y);
 	bool remove();
 	bool attack();
 	bool repair();
 	bool scan();
 	bool orbital_strike();
 	bool airdrop();
-	bool reassign(u8 type);
+	bool reassign(int type);
 
 	Button2* button = nullptr;
 	bool is_selected = false;
 
-
 private:
-	bool inc_move(i8 x, i8 y);
-	u8 get_distance(u8 x, u8 y);
-
-	bool set_searchlight_target(u8 y);
+	int get_distance(int x, int y);
 
 	void king_reveal();
 	void guard_reveal();
@@ -75,20 +77,21 @@ private:
 
 
 extern std::vector<Piece*> pieces[NUM_COLORS];
-extern u8 piecesCreated[NUM_COLORS][NUM_PIECE_TYPES];
-bool inc_created_pieces(u8 type, u8 color);
-Piece* create_piece(u8 type, u8 _color);
+extern int piecesCreated[NUM_COLORS][NUM_PIECE_TYPES];
+bool inc_created_pieces(int type, int color);
+Piece* create_piece(int type, int _color);
 void push_piece(Piece* piece);
-bool place_piece(Piece* piece, u8 x, u8 y);
-
+bool place_piece(Piece* piece, int x, int y);
+void default_placement();
 
 void reveal_pieces();
 
-void dec_created_pieces(u8 type, u8 color);
+void dec_created_pieces(int type, int color);
 void delete_piece(Piece* p);
 void delete_pieces();
 
 void print_pieces();
 
+void create_pieces();
 
 #endif

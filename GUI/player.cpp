@@ -3,25 +3,27 @@
 
 #include "player.h"
 
-Player* players[NUM_PLAYERS];
+Player* players[NUM_COLORS];
+Player* player;
 
-Player::Player(u8 _color) : color(_color){
+Player::Player(int _color) : color(_color){
 	this->stamina = STARTING_STAMINA;
 }
 
-bool Player::drain_stamina(u8 rate){
+bool Player::drain_stamina(int rate){
+	if(DEBUG) return true;
 	if(this->stamina < rate) return false;
 	this->stamina -= rate;
 	return true;
 }
 
-void Player::recharge_stamina(u8 amount){
+void Player::recharge_stamina(int amount){
 	this->stamina += amount;
 	if(this->stamina > MAX_STAMINA) this->stamina = MAX_STAMINA;
 }
 
 void create_players(){
-	for(u8 i = 0; i < NUM_PLAYERS; ++i){
+	for(int i = 0; i < NUM_COLORS; ++i){
 		players[i] = new Player(i);
 	}
 }

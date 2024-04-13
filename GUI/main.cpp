@@ -21,6 +21,7 @@
 #include "picture.hpp"
 #include "camera.hpp"
 #include "piece.h"
+#include "client.h"
 
 enum menu {HOME, SETTINGS, SELECTION, GAME};
 enum setting { ON, OFF };
@@ -151,7 +152,8 @@ int main(int, char**){
 
     // sets up game rules
 
-	start_game(renderer);
+	//start_game(renderer);
+
  	//printf("%s\n\n", run_tests());
 	//print_board();
 
@@ -195,7 +197,8 @@ int main(int, char**){
         }else if(*menu_status == SETTINGS){ // Settings Page
             get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed, *on1, *off1);
         }else if(*menu_status == SELECTION){ // Extra page between Home and the game (skipped for now)
-            get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
+            //get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
+            join_game(renderer);
         }else{ // this is the game
             // SECTION 1: PIECE SELECTION AND PLACEMENT
             camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed);
@@ -259,7 +262,7 @@ int main(int, char**){
 
             if(left_pressed && !right_pressed && current_selected_button != nullptr && s->occupied == false && s->is_valid){
                 // create new Piece
-                u8 type = KING;
+                int type = KING;
                 if(current_selected_button->type == "warning") type = RIFLEMAN;
                 else if(current_selected_button->type == "king") type = KING;
                 else if(current_selected_button->type == "engineer") type = ENGINEER;
@@ -325,22 +328,16 @@ int main(int, char**){
 }
 
 
-void start_game(SDL_Renderer* renderer){
-	printf("\n");
-	create_players();
-	create_headings();
-	//create_board(renderer);
-	create_board_filled(renderer);
-	mark_valid_tiles(renderer);
+// void start_game(SDL_Renderer* renderer){
+// 	printf("\n");
+// 	create_players();
+// 	create_headings();
+// 	//create_board(renderer);
+// 	create_board_filled(renderer);
+// 	mark_valid_tiles(renderer);
 
-}
+// }
 
-void end_game(){
-	delete_pieces();
-	delete_board();
-	delete_players();
-	printf("\n");
-}
 
 int init_png_and_font(){
     if(IMG_Init(IMG_INIT_PNG) == 0){

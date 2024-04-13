@@ -8,8 +8,10 @@
 
 class Heading{
 public:
-	i8 x;
-	i8 y;
+	int id;
+
+	int x;
+	int y;
 
 	Heading* left;
 	Heading* right;
@@ -18,7 +20,7 @@ public:
 };
 
 extern Heading headings[8];
-extern Heading* START_HEADINGS[NUM_PLAYERS];
+extern Heading* START_HEADINGS[NUM_COLORS];
 
 void create_headings();
 

@@ -3,102 +3,66 @@
 #ifndef _DEFAULT_H
 #define _DEFAULT_H
 
-#define DEBUG 0
+#define DEBUG 1
 
 #include <cstdint>
 #include <math.h>
+#include <iostream>
 
-#define u8 uint8_t
-#define i8 int8_t
-#define u16 uint16_t
-#define i16 int16_t
-#define ABS_MASK_8 0xEF
-#define ABS_MASK_16 0xEFFF
-
-#define NUM_PLAYERS 2
-
-#define EAST (headings[0])
-#define NORTHEAST (headings[1])
-#define NORTH (headings[2])
-#define NORTHWEST (headings[3])
-#define WEST (headings[4])
-#define SOUTHWEST (headings[5])
-#define SOUTH (headings[6])
-#define SOUTHEAST (headings[7])
-
-#define NUM_PIECE_TYPES 8
-#define IS_ATTACKING_PIECE(type) ((bool) ((type) > (3)))
-
-// non attacking pieces
-#define KING 0
-#define ENGINEER 1 
-#define SCOUT 2
-#define SEARCHLIGHT 3
-
-// attackin pieces
-#define GUARD 4
-#define RIFLEMAN 5
-#define SPECOPS 6
-#define PARATROOPER 7
-
-#define NUM_COLORS 2
-#define WHITE 0
-#define BLACK 1
-
-#define ACTION 0
-#define DEFEND 1
-#define STEALTH 2
 
 #define WIDTH 15
-const u8 DIAG = (u8) (WIDTH/sqrt(2));
-const u8 HEIGHT = WIDTH + 2*DIAG - 2;
+const int DIAG = (int) (WIDTH/sqrt(2));
+const int HEIGHT = WIDTH + 2*DIAG - 2;
+const int TOTAL = (WIDTH*WIDTH)+(4*(WIDTH*(DIAG-1)))+(4*(((DIAG-2)*(DIAG-1))/2));
+const int CENTER = (int) (HEIGHT/2);
+
+
+#define NUM_COLORS 2
+enum COLORS{
+	WHITE,
+	BLACK
+};
 
 #define MAX_STAMINA 10
 #define STARTING_STAMINA 10
 #define STAMINA_RECHARGE 3
- 
-#define WHITE_KING_CREATED 1
-#define WHITE_ENGINEER_CREATED 2
-#define WHITE_SCOUT_CREATED 2
-#define WHITE_SEARCHLIGHT_CREATED 1
-#define WHITE_GUARD_CREATED 4
-#define WHITE_RIFLEMAN_CREATED 8
-#define WHITE_SPECOPS_CREATED 4
-#define WHITE_PARATROOPER_CREATED 4
 
-#define BLACK_KING_CREATED 1
-#define BLACK_ENGINEER_CREATED 2
-#define BLACK_SCOUT_CREATED 2
-#define BLACK_SEARCHLIGHT_CREATED 1
-#define BLACK_GUARD_CREATED 4
-#define BLACK_RIFLEMAN_CREATED 8
-#define BLACK_SPECOPS_CREATED 4
-#define BLACK_PARATROOPER_CREATED 4
 
-const u8 MAX_PIECES_CREATED[2][NUM_PIECE_TYPES] =
+#define IS_ATTACKING_PIECE(type) ((bool) ((type) > (3)))
+enum PIECE_TYPES{
+	KING,
+	ENGINEER, 
+	SCOUT,
+	SEARCHLIGHT,
+	GUARD,
+	RIFLEMAN,
+	SPECOPS,
+	PARATROOPER,
+	NUM_PIECE_TYPES
+};
+
+
+#define NUM_START_PIECES 22
+
+#define KING_MAX 1
+#define ENGINEER_MAX 2
+#define SCOUT_MAX 2
+#define SEARCHLIGHT_MAX 1
+#define GUARD_MAX 4
+#define RIFLEMAN_MAX 8
+#define SPECOPS_MAX 4
+#define PARATROOPER_MAX 4
+
+const int MAX_PIECES_CREATED[NUM_PIECE_TYPES] =
 {
-	{
-		WHITE_KING_CREATED,
-		WHITE_ENGINEER_CREATED,
-		WHITE_SCOUT_CREATED,
-		WHITE_SEARCHLIGHT_CREATED,
-		WHITE_GUARD_CREATED,
-		WHITE_RIFLEMAN_CREATED,
-		WHITE_SPECOPS_CREATED, 
-		WHITE_PARATROOPER_CREATED
-
-	},
-
-	{
-		BLACK_KING_CREATED,
-		BLACK_ENGINEER_CREATED,
-		BLACK_SCOUT_CREATED,
-		BLACK_SEARCHLIGHT_CREATED,
-		BLACK_GUARD_CREATED,
-		BLACK_RIFLEMAN_CREATED,
-		BLACK_SPECOPS_CREATED,
-		BLACK_PARATROOPER_CREATED
-	}
+	KING_MAX,
+	ENGINEER_MAX,
+	SCOUT_MAX,
+	SEARCHLIGHT_MAX,
+	GUARD_MAX,
+	RIFLEMAN_MAX,
+	SPECOPS_MAX, 
+	PARATROOPER_MAX
 };
 
 #define KING_STAMINA_DRAIN 1.0f
@@ -131,7 +95,7 @@ const float STAMINA_DRAIN[NUM_PIECE_TYPES] =
 #define SPECOPS_HEALTH_DAMAGE 0
 #define PARATROOPER_HEALTH_DAMAGE 0
 
-const u8 HEALTH_DAMAGE[NUM_PIECE_TYPES] = 
+const int HEALTH_DAMAGE[NUM_PIECE_TYPES] = 
 {
 	KING_HEALTH_DAMAGE,
 	ENGINEER_HEALTH_DAMAGE,
@@ -154,7 +118,7 @@ const u8 HEALTH_DAMAGE[NUM_PIECE_TYPES] =
 #define PARATROOPER_ARMOR_DAMAGE 0
 
 
-const u8 ARMOR_DAMAGE[NUM_PIECE_TYPES] = 
+const int ARMOR_DAMAGE[NUM_PIECE_TYPES] = 
 {
 	KING_ARMOR_DAMAGE,
 	ENGINEER_ARMOR_DAMAGE,
@@ -175,7 +139,7 @@ const u8 ARMOR_DAMAGE[NUM_PIECE_TYPES] =
 #define SPECOPS_STARTING_HEALTH 1
 #define PARATROOPER_STARTING_HEALTH 1
 
-const u8 STARTING_HEALTH[NUM_PIECE_TYPES] =
+const int STARTING_HEALTH[NUM_PIECE_TYPES] =
 {
 	KING_STARTING_HEALTH,
 	ENGINEER_STARTING_HEALTH,
@@ -196,7 +160,7 @@ const u8 STARTING_HEALTH[NUM_PIECE_TYPES] =
 #define SPECOPS_STARTING_ARMOR 1
 #define PARATROOPER_STARTING_ARMOR 1
 
-const u8 STARTING_ARMOR[NUM_PIECE_TYPES] =
+const int STARTING_ARMOR[NUM_PIECE_TYPES] =
 {
 	KING_STARTING_ARMOR,
 	ENGINEER_STARTING_ARMOR,
@@ -208,9 +172,9 @@ const u8 STARTING_ARMOR[NUM_PIECE_TYPES] =
 	PARATROOPER_STARTING_ARMOR
 };
 
-#define DEFEND_HEALTH_DAMAGE_MOD(hd) ((u8) (hd) / (2))
-#define DEFEND_ARMOR_DAMAGE_MOD(ad) ((u8) (ad) / (2))
-#define ZERO_ARMOR_DAMAGE_MOD(hd) ((u8) (hd) + (1))
+#define DEFEND_HEALTH_DAMAGE_MOD(hd) ((int) (hd) / (2))
+#define DEFEND_ARMOR_DAMAGE_MOD(ad) ((int) (ad) / (2))
+#define ZERO_ARMOR_DAMAGE_MOD(hd) ((int) (hd) + (1))
 
 
 #define KING_VISION 5
@@ -222,7 +186,7 @@ const u8 STARTING_ARMOR[NUM_PIECE_TYPES] =
 #define SPECOPS_VISION 3
 #define PARATROOPER_VISION 3
 
-const u8 VISION[NUM_PIECE_TYPES] = 
+const int VISION[NUM_PIECE_TYPES] = 
 {
 	KING_VISION,
 	ENGINEER_VISION,
@@ -233,5 +197,23 @@ const u8 VISION[NUM_PIECE_TYPES] =
 	SPECOPS_VISION,
 	PARATROOPER_VISION
 };
+
+
+#define EAST (headings[0])
+#define NORTHEAST (headings[1])
+#define NORTH (headings[2])
+#define NORTHWEST (headings[3])
+#define WEST (headings[4])
+#define SOUTHWEST (headings[5])
+#define SOUTH (headings[6])
+#define SOUTHEAST (headings[7])
+
+
+enum STANCES{
+	ACTION,
+	DEFEND,
+	STEALTH
+};
+
 
 #endif
