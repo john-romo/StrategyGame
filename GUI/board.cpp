@@ -2,16 +2,18 @@
 
 #include "board.h"
 
-std::unordered_map<u16, Square*> board;
+std::unordered_map<uint64_t, Square*> board;
 
 /////////////////////////////////////////////////////////////////////////////
 
-Square::Square(u8 _x, u8 _y, SDL_Renderer* renderer) : x(_x), y(_y) {
+Square::Square(int _x, int _y, SDL_Renderer* renderer) : x(_x), y(_y) {
 	this->piece = NULL;
 	this->occupied = false;
 	this->visibleWhite = 0;
 	this->visibleBlack = 0;
 	this->is_valid = false;
+
+	uint64_t top = _x;
 
 	std::string type = "rock";
     if(x == 10){
@@ -22,23 +24,26 @@ Square::Square(u8 _x, u8 _y, SDL_Renderer* renderer) : x(_x), y(_y) {
     Picture* p = new Picture(renderer, type, x, y, 32, 32);
 	this->picture = p;
 
-	board.insert({(_x << 8) | _y, this});
+	board.insert({(top << (sizeof(int)*8)) | _y, this});
 }
 
-void Square::reveal(u8 color, std::vector<void*>* vect){
+void Square::reveal(int color, std::vector<void*>* vect){
 	if(!color) ++(this->visibleWhite);
 	else ++(this->visibleBlack);
 
 	vect->push_back(this);
 }
 
-void Square::unreveal(u8 color){
+void Square::unreveal(int color){
 	if(!color) --(this->visibleWhite);
 	else --(this->visibleBlack);
 }
 
 void Square::print_square(){
-	if(this->occupied) printf("%d", this->piece->type);
+	if(this->occupied){
+		if(this->piece->stance == STEALTH) printf("s");
+		else printf("%d", this->piece->type);
+	}
 	else if(this->visibleWhite && (!this->visibleBlack)) printf("+");
 	else if(this->visibleBlack && (!this->visibleWhite)) printf("*");
 	else if (this->visibleWhite && this->visibleBlack) printf("=");
@@ -53,7 +58,21 @@ void Square::render(int xmod, int ymod){
 }
 
 
-Square* get_square(u8 x, u8 y){
+Square* get_square(int x, int y){ //TODO CHECK THIS
+	Square* s;
+	try{
+		uint64_t top = x;
+
+		s = board.at((top << (sizeof(int)*8)) | y);
+		return(s);
+	}
+	catch(...){
+		printf("Error: returned null square\n");
+		return(NULL);
+	}
+}
+
+Square* get_square_old(int x, int y){
 	Square* s;
 	try{
 		s = board.at((x << 8) | y);
@@ -68,7 +87,7 @@ Square* get_square(u8 x, u8 y){
 
 /////////////////////////////////////////////////////////////////////////////
 
-Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void*>* vect){
+Square* line_reveal(Square* s, Heading h, int range, bool color, std::vector<void*>* vect){
 	Square* r;
 	for(int i = 0; i < range; ++i){
 		s->reveal(color, vect);
@@ -78,9 +97,9 @@ Square* line_reveal(Square* s, Heading h, u8 range, bool color, std::vector<void
 	return(r);
 }
 
-Square* move_selection(Square* s, Heading h, u8 magnitude){
-	u8 x = (s->x) + (magnitude*h.x);
-	u8 y = (s->y) + (magnitude*h.y);
+Square* move_selection(Square* s, Heading h, int magnitude){
+	int x = (s->x) + (magnitude*h.x);
+	int y = (s->y) + (magnitude*h.y);
 
 	Square* r;
 	if(r = get_square(x, y)) return(r);
@@ -91,29 +110,29 @@ Square* move_selection(Square* s, Heading h, u8 magnitude){
 ////////////////////////////////////////////////////////////////////
 
 void create_board(SDL_Renderer* renderer){
-	for(u8 y = 0; y < DIAG - 1; ++y){
-		for(u8 x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+			//Square* s = new Square(x,y);
 			Square* s = new Square(x,y,renderer);
 		}
 	}
-	for(u8 y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			//Square* s = new Square(x,y);
 			Square* s = new Square(x,y,renderer);
 		}
 	}
-	for(u8 y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
-		for(u8 x = 0 + d; x < HEIGHT - d; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
+			//Square* s = new Square(x,y);
 			Square* s = new Square(x,y,renderer);
 		}
 	}
 }
 
 void create_board_filled(SDL_Renderer* renderer){
-	for(u8 y = 0; y < HEIGHT; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
+	for(int y = 0; y < HEIGHT; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
 			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			Square* s = new Square(x,y,renderer);
 			Picture* p = get_square(x,y)->picture;
@@ -125,14 +144,15 @@ void create_board_filled(SDL_Renderer* renderer){
 				type = "grass4";
 			}
 			get_square(x,y)->picture = new Picture(renderer, type, 0, 0, 32, 32);
+			std::cout << x << y << std::endl;
 		}
 	}
 }
 
 void mark_valid_tiles(SDL_Renderer* renderer){
-	for(u8 y = 0; y < DIAG - 1; ++y){
-		for(u8 x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			get_square(x,y)->is_valid = true;
 			// Picture* p = get_square(x,y)->picture;
 			// get_square(x,y)->picture = nullptr;
@@ -140,39 +160,48 @@ void mark_valid_tiles(SDL_Renderer* renderer){
 			// get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
 		}
 	}
-	for(u8 y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+	printf("first mark ok\n");
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			//Square* s = new Square(x,y,renderer);
 			get_square(x,y)->is_valid = true;
 			// get_square(x,y)->picture->free_picture();
 			// get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
 		}
 	}
-	for(u8 y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
-		for(u8 x = 0 + d; x < HEIGHT - d; ++x){
-			std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
+	printf("2nd mark ok\n");
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
+			//std::cout << static_cast<unsigned>(x) << ',' << static_cast<unsigned>(y) << std::endl;
 			// Square* s = new Square(x,y,renderer);
 			get_square(x,y)->is_valid = true;
 			// get_square(x,y)->picture->free_picture();
 			// get_square(x,y)->picture = new Picture(renderer, "black", 0, 0, 32, 32);
 		}
 	}
+	printf("3rd mark ok\n");
 
-	for(u8 y = 0; y < HEIGHT; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
+	for(int y = 0; y < HEIGHT; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			printf("here1\n");
 			if(get_square(x,y)->is_valid == false){
+				printf("here2\n");
 				get_square(x,y)->picture->free_picture();
+				printf("here3\n");
 				get_square(x,y)->picture = new Picture(renderer, "rock", 0, 0, 32, 32);
+				printf("here4\n");
 			}
 		}
 	}
-
+	printf("last mark ok\n");
 }
 
 
 void delete_board(){
-	for(auto& [key, value]: board) delete(value);
+	for(auto& [key, value]: board){
+		delete(value);
+	}
 }
 
 
@@ -180,42 +209,42 @@ void delete_board(){
 
 void print_board(){
 	Square* s;
-	u8 row = 0;
+	int row = 0;
 
 	printf("%2d. ", row++);
-	for(u8 y = 0; y < DIAG - 1; ++y){
-		for(u8 i = DIAG - y - 2; i >= 0 && i < 255; --i){
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int i = DIAG - y - 2; i >= 0 && i < 255; --i){
 			printf(" ");	
 		}
-		for(u8 x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
 			if(s = get_square(x, y)) s->print_square();
 		}
 		printf("\n%2d. ", row++);
 	}
 	
-	for(u8 y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
-		for(u8 x = 0; x < HEIGHT; ++x){
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
 			if(s = get_square(x, y)) s->print_square();
 		}
 		printf("\n%2d. ", row++);
 	}
 	
-	for(u8 y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
-		for(u8 i = 1; i <= d; ++i){
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int i = 1; i <= d; ++i){
 			printf(" ");
 		}
-		for(u8 x = 0 + d; x < HEIGHT - d; ++x){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
 			if(s = get_square(x, y)) s->print_square();
 		}
 		if(y < HEIGHT-1) printf("\n%2d. ", row++);
 	}
-	printf("\n");
+	printf("\n\n");
 }
 
 
 void print_visible_squares(){
 	printf("\nWhite Revealed Squares: \n\n");
-	for(u8 i = 0; i < NUM_COLORS; ++i){
+	for(int i = 0; i < NUM_COLORS; ++i){
 		for(Piece* piece : pieces[i]){
 			printf("Type: %d\n", piece->type);
 			for(void* v : piece->visibleSquares){
@@ -223,6 +252,7 @@ void print_visible_squares(){
 				printf("(%d, %d) -> vW: %d, vB: %d\n", s->x, s->y, s->visibleWhite, s->visibleBlack);
 			}
 			printf("\n");
+
 		}
 	}
 	printf("\n");

@@ -5,22 +5,20 @@
 #define _PLAYER_H
 
 #include "default.h"
-#include <cstdio>
 
 class Player{
 public:
-	const bool color;
-	i8 stamina;
+	const int color;
+	int stamina;
 
-	Player(u8 _color);
+	Player(int _color);
 
-	bool drain_stamina(u8 rate);
-	void recharge_stamina(u8 amount);
+	bool drain_stamina(int rate);
+	void recharge_stamina(int amount);
 };
 
-extern Player* playerWhite;
-extern Player* playerBlack;
-extern Player* players[NUM_PLAYERS];
+extern Player* players[NUM_COLORS];
+extern Player* player;
 
 void create_players();
 void delete_players();

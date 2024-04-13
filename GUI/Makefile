@@ -38,7 +38,7 @@
 # defaults.h: 
 
 tbsgame: main.cpp
-	g++ main.cpp button2.cpp picture.cpp tile.cpp camera.cpp piece.cpp board.cpp heading.cpp player.cpp -lSDL2 -lSDL2_image -lSDL2_ttf -o tbsgame.out
+	g++ main.cpp button2.cpp picture.cpp tile.cpp camera.cpp piece.cpp board.cpp heading.cpp player.cpp client.cpp task.cpp -lSDL2 -lSDL2_image -lSDL2_ttf -o tbsgame.out
 
 
 
