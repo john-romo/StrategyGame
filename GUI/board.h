@@ -31,6 +31,7 @@ public:
 
 	Square(int _x, int _y, SDL_Renderer* renderer);
 	
+
 	void reveal(int color, std::vector<void*>* vect);
 	void unreveal(int color);
 	void print_square();
@@ -55,7 +56,7 @@ void delete_board();
 void print_board();
 void print_visible_squares();
 
-void camera_display(int current_x, int current_y, SDL_Rect* mouse_pos, bool pressed);
+void camera_display(int current_x, int current_y, SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank);
 void create_board_filled(SDL_Renderer* renderer);
 void mark_valid_tiles(SDL_Renderer* renderer);
 
