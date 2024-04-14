@@ -9,26 +9,17 @@
 #include <math.h>
 #include <iostream>
 
-#define PHASE_TIME_LIMIT 30
 
-#define WIDTH 15
-const int DIAG = (int) (WIDTH/sqrt(2));
-const int HEIGHT = WIDTH + 2*DIAG - 2;
-const int TOTAL = (WIDTH*WIDTH)+(4*(WIDTH*(DIAG-1)))+(4*(((DIAG-2)*(DIAG-1))/2));
-const int CENTER = (int) (HEIGHT/2);
+#define EAST (headings[0])
+#define NORTHEAST (headings[1])
+#define NORTH (headings[2])
+#define NORTHWEST (headings[3])
+#define WEST (headings[4])
+#define SOUTHWEST (headings[5])
+#define SOUTH (headings[6])
+#define SOUTHEAST (headings[7])
 
-
-#define NUM_COLORS 2
-enum COLORS{
-	WHITE,
-	BLACK
-};
-
-#define MAX_STAMINA 10
-#define STARTING_STAMINA 10
-#define STAMINA_RECHARGE 3
-
-
+#define NUM_PIECE_TYPES 8
 #define IS_ATTACKING_PIECE(type) ((bool) ((type) > (3)))
 enum PIECE_TYPES{
 	KING,
@@ -38,32 +29,74 @@ enum PIECE_TYPES{
 	GUARD,
 	RIFLEMAN,
 	SPECOPS,
-	PARATROOPER,
-	NUM_PIECE_TYPES
+	PARATROOPER
 };
 
 
-#define NUM_START_PIECES 22
+#define NUM_COLORS 2
+enum COLORS{
+	WHITE,
+	BLACK
+};
 
-#define KING_MAX 1
-#define ENGINEER_MAX 2
-#define SCOUT_MAX 2
-#define SEARCHLIGHT_MAX 1
-#define GUARD_MAX 4
-#define RIFLEMAN_MAX 8
-#define SPECOPS_MAX 4
-#define PARATROOPER_MAX 4
 
-const int MAX_PIECES_CREATED[NUM_PIECE_TYPES] =
+enum STANCES{
+	ACTION,
+	DEFEND,
+	STEALTH
+};
+
+#define WIDTH 15
+const int DIAG = (int) (WIDTH/sqrt(2));
+const int HEIGHT = WIDTH + 2*DIAG - 2;
+const int TOTAL = (WIDTH*WIDTH)+(4*(WIDTH*(DIAG-1)))+(4*(((DIAG-2)*(DIAG-1))/2));
+
+#define MAX_STAMINA 10
+#define STARTING_STAMINA 10
+#define STAMINA_RECHARGE 3
+ 
+#define WHITE_KING_MAX 1
+#define WHITE_ENGINEER_MAX 2
+#define WHITE_SCOUT_MAX 2
+#define WHITE_SEARCHLIGHT_MAX 1
+#define WHITE_GUARD_MAX 4
+#define WHITE_RIFLEMAN_MAX 8
+#define WHITE_SPECOPS_MAX 4
+#define WHITE_PARATROOPER_MAX 4
+
+#define BLACK_KING_MAX 1
+#define BLACK_ENGINEER_MAX 2
+#define BLACK_SCOUT_MAX 2
+#define BLACK_SEARCHLIGHT_MAX 1
+#define BLACK_GUARD_MAX 4
+#define BLACK_RIFLEMAN_MAX 8
+#define BLACK_SPECOPS_MAX 4
+#define BLACK_PARATROOPER_MAX 4
+
+const int MAX_PIECES_CREATED[2][NUM_PIECE_TYPES] =
 {
-	KING_MAX,
-	ENGINEER_MAX,
-	SCOUT_MAX,
-	SEARCHLIGHT_MAX,
-	GUARD_MAX,
-	RIFLEMAN_MAX,
-	SPECOPS_MAX, 
-	PARATROOPER_MAX
+	{
+		WHITE_KING_MAX,
+		WHITE_ENGINEER_MAX,
+		WHITE_SCOUT_MAX,
+		WHITE_SEARCHLIGHT_MAX,
+		WHITE_GUARD_MAX,
+		WHITE_RIFLEMAN_MAX,
+		WHITE_SPECOPS_MAX, 
+		WHITE_PARATROOPER_MAX
+
+	},
+
+	{
+		BLACK_KING_MAX,
+		BLACK_ENGINEER_MAX,
+		BLACK_SCOUT_MAX,
+		BLACK_SEARCHLIGHT_MAX,
+		BLACK_GUARD_MAX,
+		BLACK_RIFLEMAN_MAX,
+		BLACK_SPECOPS_MAX,
+		BLACK_PARATROOPER_MAX
+	}
 };
 
 #define KING_STAMINA_DRAIN 1.0f
@@ -197,30 +230,6 @@ const int VISION[NUM_PIECE_TYPES] =
 	RIFLEMAN_VISION,
 	SPECOPS_VISION,
 	PARATROOPER_VISION
-};
-
-
-#define EAST (headings[0])
-#define NORTHEAST (headings[1])
-#define NORTH (headings[2])
-#define NORTHWEST (headings[3])
-#define WEST (headings[4])
-#define SOUTHWEST (headings[5])
-#define SOUTH (headings[6])
-#define SOUTHEAST (headings[7])
-
-
-enum STANCES
-{
-	ACTION,
-	DEFEND,
-	STEALTH
-};
-
-enum TASKS
-{
-	MOVEMENT,
-	CANCEL
 };
 
 #endif
