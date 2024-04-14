@@ -135,7 +135,7 @@ int main(int, char**){
     placement_buttons[4] = new Button2(renderer, "warning", 320, 450, 32, 32 );
     placement_buttons[5] = new Button2(renderer, "warning", 360, 450, 32, 32 );
     placement_buttons[6] = new Button2(renderer, "warning", 400, 450, 32, 32 );
-    placement_buttons[7] = new Button2(renderer, "warning", 440, 450, 32, 32 );
+    placement_buttons[7] = new Button2(renderer, "paratrooper", 440, 450, 32, 32 );
 
     Button2* current_selected_button = nullptr;
     Piece* current_selected_piece = nullptr;
@@ -223,10 +223,12 @@ int main(int, char**){
             
         }else{ // this is the game
             // SECTION 1: PIECE SELECTION AND PLACEMENT
+            printf("going to display\n");
             camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed, color, blank);
+            printf("display function ok\n");
             test_camera.change_camera_pos(mouse_x, mouse_y);
             Square* s = get_square(((mouse_x / 32)+test_camera.current_x_pos), ((mouse_y / 32) + test_camera.current_y_pos));
-    
+            printf("camera and square ok\n");
             if(s->occupied){
                 if(s->piece->button->was_clicked()){
                     if(current_selected_piece != nullptr){
@@ -238,6 +240,7 @@ int main(int, char**){
                     current_selected_button = nullptr;
                 }
             }
+            printf("sq ok\n");
                 
             if(current_selected_piece != nullptr){
                 sidebar.render();
@@ -251,10 +254,11 @@ int main(int, char**){
                 slash.render();
                 maxhp[1]->render();
             }
+
             sidebar2.render();
             
 
-            if(current_selected_button != nullptr){
+            if(current_selected_button != nullptr && the_game_status != PLACEMENT){
                 current_selected_button->update_button(left_pressed, &mouse_rect);
                 current_selected_button->current_picture = current_selected_button->clicked_picture;
                 current_selected_button->render(-1, -1, false);
@@ -270,6 +274,11 @@ int main(int, char**){
 
             if(the_game_status == PLACEMENT){
                 select_ctrl.render();
+                if(current_selected_button != nullptr){
+                    current_selected_button->update_button(left_pressed, &mouse_rect);
+                    current_selected_button->current_picture = current_selected_button->clicked_picture;
+                    current_selected_button->render(-1, -1, false);
+                }
                 for(Button2* placement_button : placement_buttons){ // check if each placement button is clicked
                     placement_button->update_button(left_pressed, &mouse_rect);
                     placement_button->render();
@@ -300,7 +309,16 @@ int main(int, char**){
                     if(p == NULL){
                         std::cout << "no more pieces of this type." << std::endl;
                     }else{
-                        p->button = new Button2(renderer, "warning", 0,0,32,32);
+                        if(type == PARATROOPER) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == KING) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == ENGINEER) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == SCOUT) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == SEARCHLIGHT) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == GUARD) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == RIFLEMAN) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == KING) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else p->button = new Button2(renderer, "warning", 0,0,32,32);
+
                         if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos), true)){
                             std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
                         }else{
@@ -314,7 +332,9 @@ int main(int, char**){
                 placement_ready->render();
                 if(placement_ready->was_clicked()){
                     
-                    //placement_phase();
+                    placement_phase();
+                    printf("done placements\n");
+                    update_board(renderer);
                     printf("both players ready\n");
                     the_game_status = MOVEMENT_PHASE;
                     current_selected_button = nullptr;
@@ -322,7 +342,7 @@ int main(int, char**){
                 }
             }
 
-            // SECTION 2: PIECE SELECTION AND MOVEMENT
+            // SECTION 2: PIECE MOVEMENT
 
             
 
@@ -339,6 +359,7 @@ int main(int, char**){
                             place_piece(current_selected_piece, sqx, sqy, false);
                             current_selected_piece->is_selected = false;
                             current_selected_piece = nullptr;
+                            printf("done move\n");
                         }
                     }
 

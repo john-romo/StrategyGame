@@ -238,7 +238,6 @@ void print_visible_squares(){
 
 void camera_display(int current_x, int current_y,SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank){
 
-
 	for(int y=current_y; y<current_y+15; y++){
         for(int x=current_x; x<current_x+20; x++){
 			Square* s = get_square(x,y);
@@ -259,7 +258,20 @@ void camera_display(int current_x, int current_y,SDL_Rect* mouse_pos, bool press
 			
         }
     }
-	//std::cout << "Another frame displayed\n";
 	return;
+}
+
+void update_board(SDL_Renderer* renderer){
+	for(int y = 0; y < HEIGHT; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			Square* s = get_square(x,y);
+			if(s->occupied){
+
+				if(s->piece->button == nullptr){
+					s->piece->button = new Button2(renderer, "warning", 0,0,32,32);
+				}
+			}
+		}
+	}
 }
 

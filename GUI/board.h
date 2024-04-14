@@ -59,5 +59,6 @@ void print_visible_squares();
 void camera_display(int current_x, int current_y, SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank);
 void create_board_filled(SDL_Renderer* renderer);
 void mark_valid_tiles(SDL_Renderer* renderer);
+void update_board(SDL_Renderer* renderer);
 
 #endif
