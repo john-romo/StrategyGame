@@ -1,0 +1,15 @@
+#!/bin/bash
+
+if test -f testfile; then
+	rm testfile;
+fi
+
+gcc -o startest fmtest.c
+gcc -o runtest filemap.c
+
+
+#./runtest "client" "testfile" 5
+
+#rm testfile;
+
+./startest
