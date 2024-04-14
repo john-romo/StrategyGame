@@ -109,7 +109,9 @@ void placement_phase(){
 	//default_placement();
 
 	int* m = create_initial_placement_message();
-	print_message(m, C_INITIAL_PLACEMENT_SIZE);
+	std::cout << "***** placment message: *****" << std::endl; 
+	print_message(m, m[C_SIZE]);
+	std::cout << "***** placment end *****" << std::endl; 
 
 	write_message(m);
 
@@ -164,7 +166,10 @@ void process_message(int* msg){
 void process_initial_placement_message(int* msg){
 	std::cout << "Placing opponent pieces...\n";
 	int color = msg[C_COLOR];
-	int size = C_INITIAL_PLACEMENT_SIZE;
+	int size = msg[C_SIZE];
+	
+	print_message(msg, size);
+
 	int startpos = C_INITIAL_PLACEMENT_BODY;
 	int i = 0;
 	
@@ -173,6 +178,7 @@ void process_initial_placement_message(int* msg){
 		if(pos >= size-1) break;
 		Piece* p = create_piece(msg[pos+C_IPP_TYPE], !player->color);
 		place_piece(p, msg[pos+C_IPP_X], msg[pos+C_IPP_Y], false);
+		std::cout << "PIECE " << msg[pos+C_IPP_TYPE] << " PLACED AT " << msg[pos+C_IPP_X] << " " << msg[pos+C_IPP_Y] << std::endl;
 		++i;
 	}
 }
@@ -207,8 +213,9 @@ void process_update_message(int* msg){
 /////////////////////////// CREATE MESSAGE /////////////////////////
 
 int* create_initial_placement_message(){
-	int* msg = new int[C_INITIAL_PLACEMENT_SIZE];
-	msg[C_SIZE] = C_INITIAL_PLACEMENT_SIZE;
+	int size = (pieces[player->color].size()*C_IPP_SIZE) + C_HEADER_SIZE;
+	int* msg = new int[size];
+	msg[C_SIZE] = size;
 	msg[C_TYPE] = MSG_TYPE_INITIAL_PLACEMENT;
 	msg[C_COLOR] = player->color;
 	int startpos = C_INITIAL_PLACEMENT_BODY;

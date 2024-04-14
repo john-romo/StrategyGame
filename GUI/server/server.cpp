@@ -662,9 +662,9 @@ void placement_phase(){
 	std::shuffle(std::begin(game->clients), std::end(game->clients), rng);
 	for(Client* c : game->clients){
 		int* size = new int;
-		int* msg = new int[C_INITIAL_PLACEMENT_SIZE];
 		smart_read(c->socket, (char*)size, sizeof(int));
-		smart_read(c->socket, (char*)msg, (C_INITIAL_PLACEMENT_SIZE-1)*sizeof(int));
+		int* msg = new int[*size];
+		smart_read(c->socket, (char*)msg, ((*size)-1)*sizeof(int));
 		std::cout << "******" << *size << std::endl;
 		sizes.push_back(size);
 		msgs.push_back(msg);
