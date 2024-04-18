@@ -365,7 +365,7 @@ int main(int, char**){
                     Square* sq = get_square(sqx, sqy);
                     //if(((color == 0 && sq->visibleWhite) || (color == 1 && sq->visibleBlack)) && sq->is_valid){
                     if(sq->is_valid && sqx > 0 && sqy > 0 && sqx < HEIGHT && sqy < HEIGHT && current_selected_piece->color == color){
-                        if(abs(current_selected_piece->x - sqx < 4) && abs(current_selected_piece->y - sqy < 4)){
+                        if(abs(current_selected_piece->x - sqx) < 6 && abs(current_selected_piece->y - sqy) < 6){
                             place_piece(current_selected_piece, sqx, sqy, false);
                             current_selected_piece->is_selected = false;
                             current_selected_piece = nullptr;
