@@ -34,8 +34,6 @@ int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos
 int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y);
 Tile* create_tile(SDL_Renderer* renderer, int x, int y);
 int create_map(SDL_Renderer* renderer);
-void start_game_old(SDL_Renderer* renderer);
-
 
 int main(int, char**){
 	
@@ -61,8 +59,8 @@ int main(int, char**){
     int screen_height = 480;
     
     // Pictures containing text to render to the screen
-
-    TTF_Font* font = TTF_OpenFont("Ubuntu-B.ttf", 22);
+    TTF_Font* fontbig = TTF_OpenFont("Ubuntu-B.ttf", 32);
+    TTF_Font* font = TTF_OpenFont("Ubuntu-B.ttf", 20);
     TTF_Font* fontsmall = TTF_OpenFont("Ubuntu-B.ttf", 16);
     Picture* hpstatus[10];
     hpstatus[0] = new Picture (font, renderer, "0", 560, 80);
@@ -109,32 +107,40 @@ int main(int, char**){
     bg.render();
     SDL_RenderPresent(renderer);
 
+    Picture* loading = new Picture(fontbig, renderer, "Waiting for opponent to join...", 100, 100);
     Picture settings_bg(renderer, "settingsbg", 0, 0, 640, 480);
     Picture sidebar(renderer, "settingsbg", 512, 0, 128, 480);
     Picture sidebar2(renderer, "settingsbg", 0, 416, 640, 64);
     Picture hp_img(renderer, "heart", 525, 80, 32, 29);
     Picture armor_img(renderer, "armor", 525, 120, 32, 32);
+    Picture black_img(renderer, "blackflag", 200, 430, 32, 32);
+    Picture white_img(renderer, "whiteflag", 200, 430, 32, 32);
+    Picture sidebar_black(renderer, "blackflag", 525, 18, 32, 32);
+    Picture sidebar_white(renderer, "whiteflag", 525, 18, 32, 32);
+    Picture* your_team = new Picture(fontbig, renderer, "Your team:", 20, 430);
+    Picture* team_image;
     Picture* blank = new Picture(renderer, "grass4dark", 0, 0, 32, 32);
     
     Picture select_ctrl(renderer, "selectctrl", 100, 428, 440, 52); // 100, 426
-    Button2* b1 = new Button2(renderer, "single_player",100,430,132,30);
+    Button2* b1 = new Button2(renderer, "joingame",100,430,107,30);
     Button2* b2 = new Button2(renderer, "settings",300,430,92,30);
     Button2* b3 = new Button2(renderer, "quit", 500,430,60,30);
     Button2* b4 = new Button2(renderer, "back", 300,430,60,30);
     Button2* b5 = new Button2(renderer, "play", 0,430,60,30);
     Button2* on1 = new Button2(renderer, "on", 500, 200, 60, 30);
     Button2* off1 = new Button2(renderer, "off", 500, 200, 60, 30);
-    Button2* placement_ready = new Button2(renderer, "play", 540, 440,60,30);
+    Button2* placement_ready = new Button2(renderer, "play", 550, 440, 60, 30);
+    Button2* end_turn = new Button2(renderer, "end_turn", 535, 435, 94, 30);
 
     Button2* placement_buttons[8];
 
     placement_buttons[0] = new Button2(renderer, "king", 160, 450, 32, 32 );
     placement_buttons[1] = new Button2(renderer, "engineer", 200, 450, 32, 32 );
-    placement_buttons[2] = new Button2(renderer, "warning", 240, 450, 32, 32 );
-    placement_buttons[3] = new Button2(renderer, "warning", 280, 450, 32, 32 );
-    placement_buttons[4] = new Button2(renderer, "warning", 320, 450, 32, 32 );
-    placement_buttons[5] = new Button2(renderer, "warning", 360, 450, 32, 32 );
-    placement_buttons[6] = new Button2(renderer, "warning", 400, 450, 32, 32 );
+    placement_buttons[2] = new Button2(renderer, "scout", 240, 450, 32, 32 );
+    placement_buttons[3] = new Button2(renderer, "searchlight", 280, 450, 32, 32 );
+    placement_buttons[4] = new Button2(renderer, "guard", 320, 450, 32, 32 );
+    placement_buttons[5] = new Button2(renderer, "rifleman", 360, 450, 32, 32 );
+    placement_buttons[6] = new Button2(renderer, "specops", 400, 450, 32, 32 );
     placement_buttons[7] = new Button2(renderer, "paratrooper", 440, 450, 32, 32 );
 
     Button2* current_selected_button = nullptr;
@@ -210,25 +216,26 @@ int main(int, char**){
             get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed, *on1, *off1);
         }else if(*menu_status == SELECTION){ // Extra page between Home and the game (skipped for now)
             color = 1;
+            settings_bg.render();
+            loading->render();
+            SDL_RenderPresent(renderer);
             color = join_game(renderer);
-            if(color == 1){
+            if(color == BLACK){
                 test_camera.current_y_pos = HEIGHT-15;
+                team_image = &black_img;
+            }else{
+                team_image = &white_img;
             }
             //start_game(color, renderer);
-            printf("moving on\n");
             //start_game(0, renderer);
-            //start_game_old(renderer);
             the_game_status = PLACEMENT;
             get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
             
         }else{ // this is the game
             // SECTION 1: PIECE SELECTION AND PLACEMENT
-            printf("going to display\n");
             camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed, color, blank);
-            printf("display function ok\n");
             test_camera.change_camera_pos(mouse_x, mouse_y);
             Square* s = get_square(((mouse_x / 32)+test_camera.current_x_pos), ((mouse_y / 32) + test_camera.current_y_pos));
-            printf("camera and square ok\n");
             if(s->occupied){
                 if(s->piece->button->was_clicked()){
                     if(current_selected_piece != nullptr){
@@ -240,19 +247,19 @@ int main(int, char**){
                     current_selected_button = nullptr;
                 }
             }
-            printf("sq ok\n");
                 
             if(current_selected_piece != nullptr){
                 sidebar.render();
+                if(current_selected_piece->color == WHITE) sidebar_white.render();
+                else sidebar_black.render();
                 hp_img.render();
                 armor_img.render();
                 unit_type[(int)current_selected_piece->type]->render();
-                std::cout << (int)current_selected_piece->health << std::endl;
-                std::cout << hpstatus[(int)current_selected_piece->health]->r.x << std::endl;
                 hpstatus[(int)current_selected_piece->health]->render();
                 armorstatus[(int)current_selected_piece->armor]->render();
                 slash.render();
-                maxhp[1]->render();
+                if(current_selected_piece->type == RIFLEMAN) maxhp[4]->render();
+                else maxhp[1]->render();
             }
 
             sidebar2.render();
@@ -282,7 +289,7 @@ int main(int, char**){
                 for(Button2* placement_button : placement_buttons){ // check if each placement button is clicked
                     placement_button->update_button(left_pressed, &mouse_rect);
                     placement_button->render();
-                    if(placement_button->was_clicked()){
+                    if(placement_button->was_clicked() && placement_button->type != "paratrooper"){
                         current_selected_button = placement_button;
                         std::cout << "changed selected piece" << std::endl;
                         if(current_selected_piece != nullptr){ // deselect currently selected piece if there is one.
@@ -310,19 +317,19 @@ int main(int, char**){
                         std::cout << "no more pieces of this type." << std::endl;
                     }else{
                         if(type == PARATROOPER) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == KING) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == ENGINEER) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == SCOUT) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == SEARCHLIGHT) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == GUARD) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == RIFLEMAN) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-                        else if (type == KING) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == KING) p->button = new Button2(renderer, "king", 0,0,32,32);
+                        else if (type == ENGINEER) p->button = new Button2(renderer, "engineer", 0,0,32,32);
+                        else if (type == SCOUT) p->button = new Button2(renderer, "scout", 0,0,32,32);
+                        else if (type == SEARCHLIGHT) p->button = new Button2(renderer, "searchlight", 0,0,32,32);
+                        else if (type == GUARD) p->button = new Button2(renderer, "guard", 0,0,32,32);
+                        else if (type == RIFLEMAN) p->button = new Button2(renderer, "rifleman", 0,0,32,32);
+                        else if (type == SPECOPS) p->button = new Button2(renderer, "specops", 0,0,32,32);
                         else p->button = new Button2(renderer, "warning", 0,0,32,32);
 
                         if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos), true)){
                             std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
                         }else{
-                            std::cout << "error: didn't place piece (square occupied)" << std::endl;
+                            std::cout << "error: couldn't place piece - invalid placement" << std::endl;
                             delete_piece(p);
                         }
                     }
@@ -347,19 +354,22 @@ int main(int, char**){
             
 
             if(the_game_status == MOVEMENT_PHASE){
+                your_team->render();
+                team_image->render();
+                end_turn->update_button(left_pressed, &mouse_rect);
+                end_turn->render();
+        
                 if(current_selected_piece != nullptr && left_pressed){
                     int sqx = (mouse_rect.x / 32)+test_camera.current_x_pos;
                     int sqy = (mouse_rect.y / 32)+test_camera.current_y_pos;
                     Square* sq = get_square(sqx, sqy);
-                    std::cout << sqx << "<><><>" << sqy << std::endl;
                     //if(((color == 0 && sq->visibleWhite) || (color == 1 && sq->visibleBlack)) && sq->is_valid){
-                    if(sq->is_valid && sqx > 0 && sqy > 0 && sqx < HEIGHT && sqy < HEIGHT){
+                    if(sq->is_valid && sqx > 0 && sqy > 0 && sqx < HEIGHT && sqy < HEIGHT && current_selected_piece->color == color){
                         if(abs(current_selected_piece->x - sqx < 4) && abs(current_selected_piece->y - sqy < 4)){
-                            printf("going to move\n");
                             place_piece(current_selected_piece, sqx, sqy, false);
                             current_selected_piece->is_selected = false;
                             current_selected_piece = nullptr;
-                            printf("done move\n");
+                            printf("moved a piece\n");
                         }
                     }
 
@@ -375,6 +385,12 @@ int main(int, char**){
             SDL_Delay(frame_delay - frame_duration);
         }
     }
+    if(the_game_status != NOT_ON){
+        printf("shutting down\n");
+        end_game();
+        std::cout << "Client process shutdown\n";
+    }
+    
 
     bg.free_picture();
     select_ctrl.free_picture();
@@ -397,21 +413,9 @@ int main(int, char**){
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-	end_game();
+	//end_game();
 	return 0;
 }
-
-
-void start_game_old(SDL_Renderer* renderer){
-	printf("\n");
-	create_players();
-	create_headings();
-	//create_board(renderer);
-	create_board_filled(renderer);
-	mark_valid_tiles(renderer);
-
-}
-
 
 int init_png_and_font(){
     if(IMG_Init(IMG_INIT_PNG) == 0){

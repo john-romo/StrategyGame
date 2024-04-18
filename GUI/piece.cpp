@@ -158,7 +158,7 @@ void Piece::reveal(){
 			this->specops_reveal();
 			break;
 		case PARATROOPER:
-			this->king_reveal();
+			this->paratrooper_reveal();
 			break;
 		default:
 			break;
