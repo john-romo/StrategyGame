@@ -266,10 +266,17 @@ void update_board(SDL_Renderer* renderer){
 		for(int x = 0; x < HEIGHT; ++x){
 			Square* s = get_square(x,y);
 			if(s->occupied){
-
-				if(s->piece->button == nullptr){
-					s->piece->button = new Button2(renderer, "warning", 0,0,32,32);
-				}
+				if(s->piece->button == nullptr)
+					if(s->piece->type == KING) s->piece->button = new Button2(renderer, "king", 0,0,32,32);
+					else if(s->piece->type == ENGINEER) s->piece->button = new Button2(renderer, "engineer", 0,0,32,32);
+					else if(s->piece->type == GUARD) s->piece->button = new Button2(renderer, "guard", 0,0,32,32);
+					else if(s->piece->type == SCOUT) s->piece->button = new Button2(renderer, "scout", 0,0,32,32);
+					else if(s->piece->type == SEARCHLIGHT) s->piece->button = new Button2(renderer, "searchlight", 0,0,32,32);
+					else if(s->piece->type == RIFLEMAN) s->piece->button = new Button2(renderer, "rifleman", 0,0,32,32);
+					else if(s->piece->type == SPECOPS) s->piece->button = new Button2(renderer, "specops", 0,0,32,32);
+					else if(s->piece->type == PARATROOPER) s->piece->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+					
+				
 			}
 		}
 	}
