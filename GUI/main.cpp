@@ -129,7 +129,7 @@ int main(int, char**){
     Button2* b5 = new Button2(renderer, "play", 0,430,60,30);
     Button2* on1 = new Button2(renderer, "on", 500, 200, 60, 30);
     Button2* off1 = new Button2(renderer, "off", 500, 200, 60, 30);
-    Button2* placement_ready = new Button2(renderer, "play", 535, 435,60,30);
+    Button2* placement_ready = new Button2(renderer, "play", 550, 440, 60, 30);
     Button2* end_turn = new Button2(renderer, "end_turn", 535, 435, 94, 30);
 
     Button2* placement_buttons[8];
@@ -329,7 +329,7 @@ int main(int, char**){
                         if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos), true)){
                             std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
                         }else{
-                            std::cout << "error: didn't place piece (square occupied)" << std::endl;
+                            std::cout << "error: couldn't place piece - invalid placement" << std::endl;
                             delete_piece(p);
                         }
                     }
@@ -387,7 +387,6 @@ int main(int, char**){
     }
     if(the_game_status != NOT_ON){
         printf("shutting down\n");
-    
         end_game();
         std::cout << "Client process shutdown\n";
     }
@@ -414,7 +413,7 @@ int main(int, char**){
     SDL_DestroyWindow(window);
     SDL_Quit();
 
-	end_game();
+	//end_game();
 	return 0;
 }
 
