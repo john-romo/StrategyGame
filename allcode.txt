@@ -1,0 +1,4523 @@
+// board.cpp
+
+#include "board.h"
+
+std::unordered_map<uint64_t, Square*> board;
+
+/////////////////////////////////////////////////////////////////////////////
+
+Square::Square(int _x, int _y, SDL_Renderer* renderer) : x(_x), y(_y) {
+	this->piece = NULL;
+	this->occupied = false;
+	this->visibleWhite = 0;
+	this->visibleBlack = 0;
+	this->is_valid = false;
+
+	uint64_t top = _x;
+
+	std::string type = "rock";
+    if(x == 10){
+        type = "black";
+    }else if((x+y)%2 == 1){
+        type = "rock2";
+    }
+    Picture* p = new Picture(renderer, type, x, y, 32, 32);
+	this->picture = p;
+
+	board.insert({(top << (sizeof(int)*8)) | _y, this});
+}
+
+void Square::reveal(int color, std::vector<void*>* vect){
+	if(!color) ++(this->visibleWhite);
+	else ++(this->visibleBlack);
+
+	vect->push_back(this);
+}
+
+void Square::unreveal(int color){
+	if(!color) --(this->visibleWhite);
+	else --(this->visibleBlack);
+}
+
+void Square::print_square(){
+	if(this->occupied){
+		if(this->piece->stance == STEALTH) printf("s");
+		else printf("%d", this->piece->type);
+	}
+	else if(this->visibleWhite && (!this->visibleBlack)) printf("+");
+	else if(this->visibleBlack && (!this->visibleWhite)) printf("*");
+	else if (this->visibleWhite && this->visibleBlack) printf("=");
+	else printf("-");
+}
+
+void Square::render(int xmod, int ymod){
+	picture->rect->x = xmod*32;
+    picture->rect->y = ymod*32;
+    SDL_RenderCopy(picture->renderer, picture->texture, NULL, picture->rect );
+	return;
+}
+
+
+Square* get_square(int x, int y){ //TODO CHECK THIS
+	Square* s;
+	try{
+		uint64_t top = x;
+
+		s = board.at((top << (sizeof(int)*8)) | y);
+		return(s);
+	}
+	catch(...){
+		printf("Error: returned null square\n");
+		return(NULL);
+	}
+}
+
+Square* get_square_old(int x, int y){
+	Square* s;
+	try{
+		s = board.at((x << 8) | y);
+		return(s);
+	}
+	catch(...){
+		if(DEBUG) std::cerr << "ERROR in get_square() --> INVALID KEY\n";
+		return(NULL);
+	}
+}
+
+
+/////////////////////////////////////////////////////////////////////////////
+
+Square* line_reveal(Square* s, Heading h, int range, bool color, std::vector<void*>* vect){
+	Square* r;
+	for(int i = 0; i < range; ++i){
+		s->reveal(color, vect);
+		r = s;
+		if(!(s = move_selection(s, h, 1))) break;
+	}
+	return(r);
+}
+
+Square* move_selection(Square* s, Heading h, int magnitude){
+	int x = (s->x) + (magnitude*h.x);
+	int y = (s->y) + (magnitude*h.y);
+
+	Square* r;
+	if(r = get_square(x, y)) return(r);
+	return(NULL);
+}
+
+
+////////////////////////////////////////////////////////////////////
+
+void create_board(SDL_Renderer* renderer){
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+			//Square* s = new Square(x,y);
+			Square* s = new Square(x,y,renderer);
+		}
+	}
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			//Square* s = new Square(x,y);
+			Square* s = new Square(x,y,renderer);
+		}
+	}
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
+			//Square* s = new Square(x,y);
+			Square* s = new Square(x,y,renderer);
+		}
+	}
+}
+
+void create_board_filled(SDL_Renderer* renderer){
+	for(int y = 0; y < HEIGHT; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			Square* s = new Square(x,y,renderer);
+			Picture* p = get_square(x,y)->picture;
+			get_square(x,y)->picture = nullptr;
+			p->free_picture();
+			std::string type = "grass4";
+			
+			if((x+y)%2 == 1){
+				type = "grass4";
+			}
+			get_square(x,y)->picture = new Picture(renderer, type, 0, 0, 32, 32);
+			//std::cout << x << y << std::endl;
+		}
+	}
+}
+
+void mark_valid_tiles(SDL_Renderer* renderer){
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+			get_square(x,y)->is_valid = true;
+		}
+	}
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			get_square(x,y)->is_valid = true;
+		}
+	}
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
+			get_square(x,y)->is_valid = true;
+		}
+	}
+
+	for(int y = 0; y < HEIGHT; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			if(get_square(x,y)->is_valid == false){
+				get_square(x,y)->picture->free_picture();
+				get_square(x,y)->picture = new Picture(renderer, "rockdark", 0, 0, 32, 32);
+			}
+		}
+	}
+}
+
+
+void delete_board(){
+	for(auto& [key, value]: board){
+		delete(value);
+	}
+}
+
+
+////////////////////////////////////////////////////////////////////
+
+void print_board(){
+	Square* s;
+	int row = 0;
+
+	printf("%2d. ", row++);
+	for(int y = 0; y < DIAG - 1; ++y){
+		for(int i = DIAG - y - 2; i >= 0 && i < 255; --i){
+			printf(" ");	
+		}
+		for(int x = DIAG - y - 1; x < WIDTH + DIAG + y - 1; ++x){
+			if(s = get_square(x, y)) s->print_square();
+		}
+		printf("\n%2d. ", row++);
+	}
+	
+	for(int y = DIAG - 1; y < WIDTH + DIAG - 1; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			if(s = get_square(x, y)) s->print_square();
+		}
+		printf("\n%2d. ", row++);
+	}
+	
+	for(int y = WIDTH + DIAG - 1, d = 1; y < HEIGHT; ++y, ++d){
+		for(int i = 1; i <= d; ++i){
+			printf(" ");
+		}
+		for(int x = 0 + d; x < HEIGHT - d; ++x){
+			if(s = get_square(x, y)) s->print_square();
+		}
+		if(y < HEIGHT-1) printf("\n%2d. ", row++);
+	}
+	printf("\n\n");
+}
+
+
+void print_visible_squares(){
+	printf("\nWhite Revealed Squares: \n\n");
+	for(int i = 0; i < NUM_COLORS; ++i){
+		for(Piece* piece : pieces[i]){
+			printf("Type: %d\n", piece->type);
+			for(void* v : piece->visibleSquares){
+				Square* s = (Square*) v;
+				printf("(%d, %d) -> vW: %d, vB: %d\n", s->x, s->y, s->visibleWhite, s->visibleBlack);
+			}
+			printf("\n");
+
+		}
+	}
+	printf("\n");
+}
+
+void camera_display(int current_x, int current_y,SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank){
+
+	for(int y=current_y; y<current_y+15; y++){
+        for(int x=current_x; x<current_x+20; x++){
+			Square* s = get_square(x,y);
+			if((color == 1 && s->visibleBlack) || (color == 0 && s->visibleWhite) || s->is_valid == false){
+				s->render(x-current_x,y-current_y);
+				if(s->occupied){ // if there's a piece on this square, render that too
+					s->piece->button->update_button(pressed, mouse_pos);
+					if(s->piece->is_selected){
+						s->piece->button->current_picture = s->piece->button->clicked_picture;
+					}
+					s->piece->button->render(x-current_x,y-current_y, !(s->piece->is_selected));
+				}
+			}else{
+				blank->rect->x = (x-current_x)*32;
+				blank->rect->y = (y-current_y)*32;
+				SDL_RenderCopy(blank->renderer, blank->texture, NULL, blank->rect );
+			}
+			
+        }
+    }
+	return;
+}
+
+void update_board(SDL_Renderer* renderer){
+	for(int y = 0; y < HEIGHT; ++y){
+		for(int x = 0; x < HEIGHT; ++x){
+			Square* s = get_square(x,y);
+			if(s->occupied){
+
+				if(s->piece->button == nullptr){
+					s->piece->button = new Button2(renderer, "warning", 0,0,32,32);
+				}
+			}
+		}
+	}
+}
+
+#include "button2.hpp"
+#include "picture.hpp"
+
+//using namespace std;
+
+// This is the class for clickable buttons.
+
+// This constructor will set some default statuses and create Picture objects for each 
+// possible button state: being clicked on, hovered over, or neither. 
+
+Button2::Button2(SDL_Renderer* renderer, std::string bname, int rect_x, int rect_y, int rect_w, int rect_h){
+
+    Picture* normal = new Picture(renderer, bname+"_normal", rect_x, rect_y, rect_w, rect_h);
+    Picture* hovered = new Picture(renderer, bname+"_hovered", rect_x, rect_y, rect_w, rect_h);
+    Picture* clicked = new Picture(renderer, bname+"_clicked", rect_x, rect_y, rect_w, rect_h);
+    this->type = bname;
+    active = false;
+    active_ptr = &active;
+    status = NORMAL;
+    prev_status = NORMAL;
+    prev_status_ptr = &prev_status;
+    status_ptr = &status;
+    normal_picture = normal;
+    hovered_picture = hovered;
+    clicked_picture = clicked;
+    current_picture = normal;
+    return;
+}
+
+// Checks the current state of the button when needed and 
+// updates it, if necessary.
+
+void Button2::update_button(bool left_pressed, SDL_Rect* mouse_pos){
+    *prev_status_ptr = *status_ptr;
+    
+    if(SDL_HasIntersection(mouse_pos, current_picture->rect)){ // if mouse pos is at the button
+        if(left_pressed){
+            *status_ptr = CLICKED;
+            this->current_picture = clicked_picture;
+            if(this->prev_status == HOVERED){
+                *active_ptr = true;
+            }
+        }else{
+            *status_ptr = HOVERED;
+            this->current_picture = hovered_picture;
+        }
+    }else{
+        *status_ptr = NORMAL;
+        this->current_picture = normal_picture;
+        *active_ptr = false;
+    }
+
+    if(*status_ptr == *prev_status_ptr){
+        return;
+    }
+    // if(status == NORMAL){
+    //     this->current_picture = normal_picture;
+    // }else if(status == HOVERED){
+    //     printf("HOVERED\n");
+    //     this->current_picture = hovered_picture;
+    // }else{
+    //     this->current_picture = clicked_picture;
+    // }
+
+    return;
+}
+
+
+bool Button2::was_clicked(void){
+    if(*status_ptr == HOVERED && prev_status == CLICKED && active == true){
+        *active_ptr = false;
+        return true;
+    }
+    return false;
+}
+
+void Button2::free_button_pictures(){
+    delete normal_picture;
+    delete hovered_picture;
+    delete clicked_picture;
+}
+
+void Button2::render(int xmod, int ymod, bool use_default_picture){
+    if(use_default_picture == false){
+        if(xmod >= 0 && ymod >= 0){
+            current_picture->rect->x = xmod*32;
+            current_picture->rect->y = ymod*32;
+        }
+        SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
+    }
+    else if(xmod < 0 && ymod < 0){
+        // if(status == NORMAL){
+        //     SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
+        // }else if(status == HOVERED){
+        //     SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
+        // }else{
+        //     SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+        // }
+        SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
+    }else{
+        if(status == NORMAL){
+            normal_picture->rect->x = xmod*32;
+            normal_picture->rect->y = ymod*32;
+            //SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
+            //SDL_RenderCopy(normal_picture->renderer, normal_picture->texture, NULL, normal_picture->rect );
+        }else if(status == HOVERED){
+            hovered_picture->rect->x = xmod*32;
+            hovered_picture->rect->y = ymod*32;
+            //SDL_RenderCopy(hovered_picture->renderer, hovered_picture->texture, NULL, hovered_picture->rect );
+        }else{
+            clicked_picture->rect->x = xmod*32;
+            clicked_picture->rect->y = ymod*32;
+            //SDL_RenderCopy(clicked_picture->renderer, clicked_picture->texture, NULL, clicked_picture->rect );
+        }
+        SDL_RenderCopy(current_picture->renderer, current_picture->texture, NULL, current_picture->rect );
+        return;
+
+    }
+    return;
+
+}
+#include "camera.hpp"
+#include "default.h"
+
+Camera::Camera(){
+    //this->map = the_map;
+    return;
+}
+
+// This will actually draw the map, by rendering each Tile object in view.
+// Now removed and replaced with a separate function.
+
+// void Camera::display_map(){
+//     for(int x=current_x_pos; x<current_x_pos+20; x++){
+//         for(int y=current_y_pos; y<current_y_pos+15; y++){
+//             (*map)[x][y]->render(x-current_x_pos,y-current_y_pos);
+//         }
+//     }
+//     return;
+// }
+
+// Change the spot a player is looking at on the map, depending on where the mouse is.
+
+void Camera::change_camera_pos(int mouse_x, int mouse_y){
+    if(mouse_x > 620 && mouse_y < 640) current_x_pos += 1;
+    else if(mouse_x < 20 && mouse_x >= 0) current_x_pos -= 1;
+    if(mouse_y > 460 && mouse_y < 480) current_y_pos += 1;
+    else if(mouse_y < 20 && mouse_y >= 0) current_y_pos -= 1;
+    if(current_x_pos > HEIGHT - 20) current_x_pos = HEIGHT - 20;
+    else if(current_x_pos < 0) current_x_pos = 0;
+    if(current_y_pos > HEIGHT-15) current_y_pos = HEIGHT-15;
+    else if(current_y_pos < 0) current_y_pos = 0;
+    return;
+}
+// client.cpp
+
+
+#include "client.h"
+
+uint64_t id;
+uint64_t gameId;
+
+std::thread tickThread;
+
+Flag* flags;
+int sock = get_client_socket();
+int ticksock = get_client_socket();
+int tickProcessId;
+
+
+void sigint_handler(int signal){
+	std::cout << getpid() << " killed by SIGINT.\n";
+	close(sock);
+	close(ticksock);
+	exit(SIGINT);
+}
+
+
+int join_game(SDL_Renderer* renderer){
+	std::signal(SIGINT, sigint_handler);
+
+	struct sockaddr_in addr = get_socket_addr(PORT);
+	while(connect(sock, (struct sockaddr*) &addr, sizeof(struct sockaddr_in))< 0){
+		std::cout << "Trying to connect...\n";
+		sleep(1);
+	}
+	
+	struct sockaddr_in tickaddr = get_socket_addr(TICK_PORT);
+	while(connect(ticksock, (struct sockaddr*) &tickaddr, sizeof(struct sockaddr_in))< 0){
+		std::cout << "Trying to connect to Tick Server...\n";
+		sleep(1);
+	}
+
+	char c = 'n';
+	write(sock, &c, 1);
+	read(sock, &id, sizeof(uint64_t));
+	//printf("client ids: %llu\n", id);
+	
+	std::cout << "Waiting for opponents to join...\n";
+	fflush(stdout);
+
+	int color;
+	while(c != 'a'){
+		read(sock, &color, sizeof(int));
+		read(sock, &gameId, sizeof(uint64_t));
+		read(sock, &c, 1);
+		if(c != 'a') sec_sleep(0.1);
+	}
+
+	std::cout << "**********" << std::endl;
+
+	game(color, renderer);
+
+	std::cout << "**********" << std::endl;
+
+	return color;
+}
+
+
+
+void game(int color, SDL_Renderer* renderer){
+	std::cout << "Starting game...\n"; 
+	std::cout << "id: " << id << " Color: " << color << "\n";
+	start_game(color, renderer);
+	std::cout << "Game started.\n";
+	flags = init_flags();
+	std::cout << "Flags initialized.\n";
+	//std::thread tickThread(tick);
+	tickThread = std::thread(tick);
+	std::cout << "Tick started.\n";
+	std::cout << "Tick started.\n";
+
+	int count = 0;
+
+	// while(1){
+	// 	sleep(1);
+	// 	printf("here\n");
+	// 	count += 1;
+	// 	if(count>5) break;
+	// }
+	//return;
+	//placement_phase();
+	
+	// print_board();
+	// //movement_test();
+
+	// while(!check_flag(flags->shutdown)){
+	// 	if(check_flag(flags->disconnect)){
+	// 		sec_sleep(0.1);
+	// 		continue;
+	// 	}
+	// 	sec_sleep(1.0);
+	// }
+	
+	// end_game();
+	// std::cout << "Client process shutdown\n";
+}
+
+
+/////////////////////////// PHASES /////////////////////////////////
+
+void placement_phase(){
+	//default_placement();
+
+	int* m = create_initial_placement_message();
+	std::cout << "***** placment message: *****" << std::endl; 
+	print_message(m, m[C_SIZE]);
+	std::cout << "***** placment end *****" << std::endl; 
+
+	write_message(m);
+
+	int* msg = read_message();
+	process_message(msg);
+}
+
+void movement_test(){
+	if(player->color){
+		Square* s1;
+		if(!(s1 = get_square(5, 24))) std::cerr << "ERROR: movement test failed at 1\n";
+		Piece* p1;
+		if(!(p1 = s1->piece)) std::cerr << "ERROR: movement test failed at 2\n";
+		Square* s2;
+		if(!(s2 = get_square(7, 24))) std::cerr << "ERROR: movement test failed at 3\n";
+		Piece* p2;
+		if(!(p2 = s2->piece)) std::cerr << "ERROR: movement test failed at 4\n";
+		p1->move(p1->heading, 5, 14);
+		p2->move(p2->heading, 7, 14);
+	}
+	else{
+		Square* s1;
+		if(!(s1 = get_square(5, 8))) std::cerr << "ERROR: movement test failed at 1\n";
+		Piece* p1;
+		if(!(p1 = s1->piece)) std::cerr << "ERROR: movement test failed at 2\n";
+		Square* s2;
+		if(!(s2 = get_square(7, 8))) std::cerr << "ERROR: movement test failed at 3\n";
+		Piece* p2;
+		if(!(p2 = s2->piece)) std::cerr << "ERROR: movement test failed at 4\n";
+		p1->move(p1->heading, 5, 18);
+		p2->move(p2->heading, 7, 18);
+	}
+}
+
+
+
+/////////////////////////// PROCESS MESSAGE ////////////////////////
+
+void process_message(int* msg){
+	switch(msg[C_TYPE]){
+	 	case MSG_TYPE_INITIAL_PLACEMENT:
+			process_initial_placement_message(msg);
+			return;
+		case MSG_TYPE_UPDATE:
+			process_update_message(msg);
+		default:
+			return;
+	}
+}
+
+
+void process_initial_placement_message(int* msg){
+	std::cout << "Placing opponent pieces...\n";
+	int color = msg[C_COLOR];
+	int size = msg[C_SIZE];
+	
+	print_message(msg, size);
+
+	int startpos = C_INITIAL_PLACEMENT_BODY;
+	int i = 0;
+	
+	while(1){
+		int pos = startpos + (i*C_IPP_SIZE);
+		if(pos >= size-1) break;
+		Piece* p = create_piece(msg[pos+C_IPP_TYPE], !player->color);
+		place_piece(p, msg[pos+C_IPP_X], msg[pos+C_IPP_Y], false);
+		++i;
+	}
+	print_board();
+}
+
+
+void process_update_message(int* msg){
+	std::cout << "updating boar...\n";
+	int color = msg[C_COLOR];
+	int size = msg[C_SIZE];
+	int startpos = C_UPDATE_BODY;
+	int i = 0;
+
+	while(1){
+		int pos = startpos + (i*C_UPDATE_SIZE);
+		if(pos >= size-1) break;
+		int startX = msg[pos+C_UPDATE_START_X];
+		int startY = msg[pos+C_UPDATE_START_Y];
+		int endX = msg[pos+C_UPDATE_END_X];
+		int endY = msg[pos+C_UPDATE_END_Y];
+		int stance = msg[pos+C_UPDATE_STANCE];
+		Square* s;
+		if(!(s = get_square(startX, startY))) std::cerr << "ERROR: Incorrect update message\n";
+		Piece* p;
+		if(!(p = s->piece)) std::cerr << "ERROR: Incorrect update message\n";
+		if(!place_piece(p, endX, endY, false)) std::cerr << "ERROR: Incorrect update message\n";
+		p->stance = stance;
+		++i;
+	}
+}
+
+
+/////////////////////////// CREATE MESSAGE /////////////////////////
+
+int* create_initial_placement_message(){
+	int size = (pieces[player->color].size()*C_IPP_SIZE) + C_HEADER_SIZE;
+	int* msg = new int[size];
+	msg[C_SIZE] = size;
+	msg[C_TYPE] = MSG_TYPE_INITIAL_PLACEMENT;
+	msg[C_COLOR] = player->color;
+	int startpos = C_INITIAL_PLACEMENT_BODY;
+
+	int i = 0;
+	for(Piece* p : pieces[player->color]){
+		if(p->type == PARATROOPER) continue;
+		int pos = startpos + (i*C_IPP_SIZE);
+		msg[pos+C_IPP_TYPE] = p->type;
+		msg[pos+C_IPP_X] = p->x;
+		msg[pos+C_IPP_Y] = p->y;
+		++i;
+	}
+	return msg;
+}
+
+int* create_update_message(){
+	std::vector<int> msgVect;
+	msgVect.push_back(0); //temporary
+	msgVect.push_back(MSG_TYPE_UPDATE);
+	msgVect.push_back(player->color);
+
+	for(Piece* p : pieces[player->color]){
+		printf("IN\n");
+		if(p->tasks.empty()) continue;
+		Task* t = (Task*) p->tasks.front();
+		if(t->type != MOVEMENT) continue;
+		msgVect.push_back(p->x);
+		msgVect.push_back(p->y);
+		msgVect.push_back(p->x + t->heading.x);
+		msgVect.push_back(p->y + t->heading.y);
+		msgVect.push_back(p->stance);
+	}
+	
+	int size = msgVect.size();
+	msgVect.at(0) = size;
+	int* msg = new int[size];
+	for(int i = 0; i < size; ++i){
+		msg[i] = msgVect.at(i);
+	}
+	return msg;
+}
+
+/////////////////////////// TICK ///////////////////////////////////
+
+void tick(){
+	while(1){
+		if(check_flag(flags->shutdown)){
+			std::cout << "Tick process shutdown.\n";
+			exit(0);
+		}
+
+		char ch = player->color;
+		
+		write(ticksock, &ch, 1);
+		read(ticksock, &ch, 1);
+		printf("tick: %d\n", ch);
+		process_tick(ch);
+	}		
+}
+
+
+void process_tick(char tick){
+	switch(tick){
+		case 'x':
+			std::cout << "Tick Process shutdown -> Server disconnected.\n";
+			set_flag(flags->shutdown, true);
+			exit(0);
+		case 'a':
+			set_flag(flags->disconnect, false);
+			break;
+		// case 'U':{
+		// 	std::cout << "Start Phase U\n";
+		// 	movement();
+		// 	std::cout << "Movement done\n";
+		// 	int* msg = create_update_message();
+		// 	std::cout << "Create message done: ";
+		// 	print_message(msg, msg[C_SIZE]);
+		// 	write_message(msg);
+		// 	std::cout << "Write message done\n";
+		// 	msg = read_message();
+		// 	std::cout << "Read message done\n";
+		// 	process_message(msg);
+		// 	std::cout << "Process message done\n";
+		// 	std::cout << "Move Phase Done\n";
+		// 	break;
+		// }
+		// case 'u':{
+		// 	std::cout << "Start Phase u\n";
+		// 	int* msg = read_message();
+		// 	std::cout << "Read message done\n";
+		// 	process_message(msg);
+		// 	std::cout << "Process message done\n";
+		// 	movement();
+		// 	std::cout << "Movement done\n";
+		// 	msg = create_update_message();
+		// 	std::cout << "Create message done: ";
+		// 	print_message(msg, msg[C_SIZE]);
+		// 	write_message(msg);
+		// 	std::cout << "Write message done\n";
+		// 	std::cout << "Move Phase Done\n";
+		// 	break;
+		// }
+		default:
+			std::cout << "Opponent disconnected. " << (int)tick << " seconds to reconnect...\n" ;
+			set_flag(flags->disconnect, true);
+		
+	}
+}
+
+
+/////////////////////////// IO /////////////////////////////////////
+
+int* read_message(){
+	char csize[sizeof(int)];
+	split_read(csize, sizeof(int));
+	int size = *((int*) csize);
+	char* msg = new char[size*sizeof(int)]();
+	((int*)msg)[S_SIZE] = size;
+	split_read(msg+sizeof(int), (size-1)*sizeof(int));
+	return (int*) msg; 
+}
+
+
+void write_message(int* msg){
+	split_write((char*) msg, sizeof(int));
+	split_write((char*) (msg+1), (msg[C_SIZE]-1)*sizeof(int));
+	delete msg;
+}
+
+
+void split_read(char* m, int len){
+	ssize_t bytes;
+	while(len > 0){
+		bytes = read(sock, m, len);
+		if(bytes <= 0) return;
+		m += bytes;
+		len -= bytes;
+	}
+}
+
+
+void split_write(char* m, int len){
+	ssize_t bytes;
+	while(len > 0){
+		bytes = write(sock, m, len);
+		if(bytes < 0) return;
+		m += bytes;
+		len -= bytes;
+	}
+}
+
+
+/////////////////////////// INIT ///////////////////////////////////
+
+void start_game(int color, SDL_Renderer* renderer){
+	create_players();
+	player = players[color];
+	create_headings();
+	//create_board();
+	create_board_filled(renderer);
+	mark_valid_tiles(renderer);
+	//create_pieces();
+}
+
+
+void end_game(){
+	delete_pieces();
+	delete_board();
+	delete_players();
+}
+
+
+Flag* init_flags(){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	Flag* f = (Flag*) mmap(NULL, sizeof(Flag), prot, opts, -1, 0);
+	f->disconnect = false;
+	f->shutdown = false;
+	f->update = false;
+	return f;
+}
+
+
+struct sockaddr_in get_socket_addr(int port){
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	addr.sin_addr.s_addr = inet_addr(ADDRESS);
+	return(addr);
+}
+
+
+int get_client_socket(){
+	struct addrinfo info, *data;
+	memset(&info, 0, sizeof(info));
+	info.ai_family = AF_INET;
+	info.ai_socktype = SOCK_STREAM;
+	
+	int err = getaddrinfo(ADDRESS, NULL, &info, &data);
+	
+	return(socket(data->ai_family, data->ai_socktype, 0));
+}
+
+
+/////////////////////////// UTIL ///////////////////////////////////
+
+void set_flag(bool& flag, bool setval){
+	flags->mutex.lock();
+	flag = setval;
+	flags->mutex.unlock();
+}
+
+
+bool check_flag(bool flag){
+	bool r;
+	flags->mutex.lock();
+	r = flag;
+	flags->mutex.unlock();
+	return r;
+}
+
+
+void sec_sleep(float period){
+	struct timespec t1, t2;
+	t1.tv_sec = (period > 1) ? (int) period  : 0;
+	t1.tv_nsec = (unsigned long long) ((period - ((int) period))*1000000000ull);
+	nanosleep(&t1, &t2);
+}
+
+
+void print_message(int* m, int size){
+	for(int i = 0; i < size; ++i){
+		printf("%d ", m[i]);
+		fflush(stdout);
+	}
+	printf("\n");
+	fflush(stdout);
+}
+
+
+void print_flags(){
+	std::cout << "falgs: " << flags->disconnect << " " 
+		<< flags->shutdown << " " << flags->update << "\n";
+}
+
+
+
+
+
+
+
+
+// headings.cpp
+
+
+#include "heading.h"
+
+Heading headings[8];
+
+void create_headings(){
+	EAST.id = 0;
+	EAST.x = 1;
+	EAST.y = 0;
+	EAST.left = &NORTHEAST;
+	EAST.right = &SOUTHEAST;
+	EAST.reverse = &WEST;
+
+	NORTHEAST.id = 1;
+	NORTHEAST.x = 1;
+	NORTHEAST.y = 1;
+	NORTHEAST.left = &NORTH;
+	NORTHEAST.right = &EAST;
+	NORTHEAST.reverse = &SOUTHWEST;
+
+	NORTH.id = 2;
+	NORTH.x = 0;
+	NORTH.y = 1;
+	NORTH.left = &NORTHWEST;
+	NORTH.right = &NORTHEAST;
+	NORTH.reverse = &SOUTH;
+
+	NORTHWEST.id = 3;
+	NORTHWEST.x = -1;
+	NORTHWEST.y = 1;
+	NORTHWEST.left = &WEST;
+	NORTHWEST.right = &NORTH;
+	NORTHWEST.reverse = &SOUTHEAST;
+
+	WEST.id = 4;
+	WEST.x = -1;
+	WEST.y = 0;
+	WEST.left = &SOUTHWEST;
+	WEST.right = &NORTHWEST;
+	WEST.reverse = &EAST;
+
+	SOUTHWEST.id = 5;
+	SOUTHWEST.x = -1;
+	SOUTHWEST.y = -1;
+	SOUTHWEST.left = &SOUTH;
+	SOUTHWEST.right = &WEST;
+	SOUTHWEST.reverse = &NORTHEAST;
+
+	SOUTH.id = 6;
+	SOUTH.x = 0;
+	SOUTH.y = -1;
+	SOUTH.left = &SOUTHEAST;
+	SOUTH.right = &SOUTHWEST;
+	SOUTH.reverse = &NORTH;
+
+	SOUTHEAST.id = 7;
+	SOUTHEAST.x = 1;
+	SOUTHEAST.y = -1;
+	SOUTHEAST.left = &SOUTH;
+	SOUTHEAST.right = &EAST;
+	SOUTHEAST.reverse = &NORTHWEST;
+	
+}
+
+
+Heading* START_HEADINGS[NUM_COLORS] = {&NORTH, &SOUTH};
+
+
+
+
+// main.cpp
+// new library required: sudo apt-get install libsdl2-ttf-dev
+
+#include <stdlib.h>
+
+#include "main.h"
+#include "board.h"
+#include "player.h"
+#include "test.h"
+#include "default.h"
+
+// includes for GUI
+#include <iostream>
+#include <string>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
+#include <list>
+
+#include "button2.hpp"
+#include "picture.hpp"
+#include "camera.hpp"
+#include "piece.h"
+#include "client.h"
+
+enum menu {HOME, SETTINGS, SELECTION, GAME};
+enum game_status {NOT_ON, PLACEMENT, MOVEMENT_PHASE};
+enum setting { ON, OFF };
+
+void assign_tile_pointers(Tile* (*map)[100][100]);
+int init_png_and_font();
+int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked);
+int get_settings_menu(menu* status, SDL_Renderer* renderer,  SDL_Rect* mouse_pos, Picture bg, Button2 b1, setting* fx, setting* music, bool clicked, Button2 on1, Button2 off1);
+int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y);
+Tile* create_tile(SDL_Renderer* renderer, int x, int y);
+int create_map(SDL_Renderer* renderer);
+void start_game_old(SDL_Renderer* renderer);
+
+
+int main(int, char**){
+	
+	// GUI and SDL stuff
+	const int fps = 50;
+    const int frame_delay = 1000 / fps;
+    int color = 0;
+    Uint64 frame_start_time = 0;
+    int frame_duration = 0;
+    menu menu_stat = HOME;
+    menu* menu_status = &menu_stat;
+    setting sound = OFF;
+    setting* fx = &sound;
+    setting mus = OFF;
+    setting* music = &mus;
+    game_status the_game_status = NOT_ON;
+	SDL_Init(SDL_INIT_EVERYTHING);
+    SDL_Window* window = SDL_CreateWindow("Cool Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 480, SDL_WINDOW_RESIZABLE);
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+    SDL_RenderPresent(renderer);
+    init_png_and_font();
+    int screen_width = 640;
+    int screen_height = 480;
+    
+    // Pictures containing text to render to the screen
+
+    TTF_Font* font = TTF_OpenFont("Ubuntu-B.ttf", 22);
+    TTF_Font* fontsmall = TTF_OpenFont("Ubuntu-B.ttf", 16);
+    Picture* hpstatus[10];
+    hpstatus[0] = new Picture (font, renderer, "0", 560, 80);
+    hpstatus[1] = new Picture (font, renderer, "1", 560, 80);
+    hpstatus[2] = new Picture (font, renderer, "2", 560, 80);
+    hpstatus[3] = new Picture (font, renderer, "3", 560, 80);
+    hpstatus[4] = new Picture (font, renderer, "4", 560, 80);
+    hpstatus[5] = new Picture (font, renderer, "5", 560, 80);
+    hpstatus[6] = new Picture (font, renderer, "6", 560, 80);
+    hpstatus[7] = new Picture (font, renderer, "7", 560, 80);
+    hpstatus[8] = new Picture (font, renderer, "8", 560, 80);
+    hpstatus[9] = new Picture (font, renderer, "9", 560, 80);
+
+    Picture* armorstatus[5];
+    armorstatus[0] = new Picture (font, renderer, "0", 560, 125);
+    armorstatus[1] = new Picture (font, renderer, "1", 560, 125);
+    armorstatus[2] = new Picture (font, renderer, "2", 560, 125);
+    armorstatus[3] = new Picture (font, renderer, "3", 560, 125);
+    armorstatus[4] = new Picture (font, renderer, "4", 560, 125);
+
+
+    Picture* maxhp[5];
+    maxhp[0] = new Picture (font, renderer, "0", 586, 80);
+    maxhp[1] = new Picture (font, renderer, "1", 586, 80);
+    maxhp[2] = new Picture (font, renderer, "2", 586, 80);
+    maxhp[3] = new Picture (font, renderer, "3", 586, 80);
+    maxhp[4] = new Picture (font, renderer, "4", 586, 80);
+
+    Picture slash(font, renderer, "/", 574, 80);
+
+    Picture* unit_type[8];
+    unit_type[0] = new Picture(font, renderer, "King", 524, 50);
+    unit_type[1] = new Picture(font, renderer, "Engineer", 524, 50);
+    unit_type[2] = new Picture(font, renderer, "Scout", 524, 50);
+    unit_type[3] = new Picture(font, renderer, "Searchlight", 524, 50);
+    unit_type[4] = new Picture(font, renderer, "Guard", 524, 50);
+    unit_type[5] = new Picture(font, renderer, "Rifleman", 524, 50);
+    unit_type[6] = new Picture(font, renderer, "Specops", 524, 50);
+    unit_type[7] = new Picture(font, renderer, "Paratrooper", 524, 50);
+    
+    // PNG pictures and Buttons
+
+    Picture bg(renderer, "bg", 0, 0, 640, 480);
+    bg.render();
+    SDL_RenderPresent(renderer);
+
+    Picture settings_bg(renderer, "settingsbg", 0, 0, 640, 480);
+    Picture sidebar(renderer, "settingsbg", 512, 0, 128, 480);
+    Picture sidebar2(renderer, "settingsbg", 0, 416, 640, 64);
+    Picture hp_img(renderer, "heart", 525, 80, 32, 29);
+    Picture armor_img(renderer, "armor", 525, 120, 32, 32);
+    Picture* blank = new Picture(renderer, "grass4dark", 0, 0, 32, 32);
+    
+    Picture select_ctrl(renderer, "selectctrl", 100, 428, 440, 52); // 100, 426
+    Button2* b1 = new Button2(renderer, "single_player",100,430,132,30);
+    Button2* b2 = new Button2(renderer, "settings",300,430,92,30);
+    Button2* b3 = new Button2(renderer, "quit", 500,430,60,30);
+    Button2* b4 = new Button2(renderer, "back", 300,430,60,30);
+    Button2* b5 = new Button2(renderer, "play", 0,430,60,30);
+    Button2* on1 = new Button2(renderer, "on", 500, 200, 60, 30);
+    Button2* off1 = new Button2(renderer, "off", 500, 200, 60, 30);
+    Button2* placement_ready = new Button2(renderer, "play", 540, 440,60,30);
+
+    Button2* placement_buttons[8];
+
+    placement_buttons[0] = new Button2(renderer, "king", 160, 450, 32, 32 );
+    placement_buttons[1] = new Button2(renderer, "engineer", 200, 450, 32, 32 );
+    placement_buttons[2] = new Button2(renderer, "warning", 240, 450, 32, 32 );
+    placement_buttons[3] = new Button2(renderer, "warning", 280, 450, 32, 32 );
+    placement_buttons[4] = new Button2(renderer, "warning", 320, 450, 32, 32 );
+    placement_buttons[5] = new Button2(renderer, "warning", 360, 450, 32, 32 );
+    placement_buttons[6] = new Button2(renderer, "warning", 400, 450, 32, 32 );
+    placement_buttons[7] = new Button2(renderer, "paratrooper", 440, 450, 32, 32 );
+
+    Button2* current_selected_button = nullptr;
+    Piece* current_selected_piece = nullptr;
+    
+    //std::list<Piece*> team_pieces = {};
+
+    // SDL stuff used by the main loop
+
+    SDL_Event event;
+    SDL_Rect mouse_rect;
+    mouse_rect.x = 0;
+    mouse_rect.y = 0;
+    mouse_rect.w = 1;
+    mouse_rect.h = 1;
+    int mouse_x, mouse_y;
+    
+    bool keep_running = true;
+    bool left_pressed = false;
+    bool right_pressed = false;
+    bool left_pressed_prev = false;
+    bool right_pressed_prev = false;
+
+    std::cout << "Hello World\n";
+    Camera test_camera;
+
+    // sets up game rules
+
+	
+
+ 	//printf("%s\n\n", run_tests());
+	//print_board();
+
+	while(keep_running){ // This is the main loop for the game.
+        //cout << mouse_x << endl;
+        //cout << mouse_y << endl;
+
+        frame_start_time = SDL_GetTicks64();
+        left_pressed_prev = left_pressed;
+        right_pressed_prev = right_pressed;
+       
+        while(SDL_PollEvent(&event) != 0){ // a queue of events for this frame
+            if(event.type == SDL_QUIT){
+                keep_running = false;
+                break;
+            }
+            else if(event.type == SDL_MOUSEBUTTONDOWN){
+                if(event.button.button == SDL_BUTTON_LEFT){
+                    left_pressed = true;
+                }else if(event.button.button == SDL_BUTTON_RIGHT){
+                    right_pressed = true;
+                }
+            }else if(event.type == SDL_MOUSEBUTTONUP){
+                if(event.button.button == SDL_BUTTON_LEFT){
+                    left_pressed = false;
+                }else if(event.button.button == SDL_BUTTON_RIGHT){
+                    right_pressed = false;
+                }
+            }else if(event.type == SDL_MOUSEMOTION){
+                SDL_GetMouseState(&mouse_x, &mouse_y);
+                mouse_rect.x = mouse_x;
+                mouse_rect.y = mouse_y;
+            }
+        }
+        SDL_GetWindowSize(window, &screen_width, &screen_height);
+
+        // The following changes the current display depending on the state of the game
+        // this if/else chain controls what shows up on the game window.
+
+        if(*menu_status == HOME){ // Homescreen
+            get_home_menu(menu_status, renderer,&mouse_rect,bg,*b1,*b2,*b3,&keep_running,left_pressed);
+        }else if(*menu_status == SETTINGS){ // Settings Page
+            get_settings_menu(menu_status, renderer, &mouse_rect, settings_bg, *b4, fx, music, left_pressed, *on1, *off1);
+        }else if(*menu_status == SELECTION){ // Extra page between Home and the game (skipped for now)
+            color = 1;
+            color = join_game(renderer);
+            if(color == 1){
+                test_camera.current_y_pos = HEIGHT-15;
+            }
+            //start_game(color, renderer);
+            printf("moving on\n");
+            //start_game(0, renderer);
+            //start_game_old(renderer);
+            the_game_status = PLACEMENT;
+            get_selection_menu(menu_status, renderer, &test_camera, mouse_x, mouse_y);
+            
+        }else{ // this is the game
+            // SECTION 1: PIECE SELECTION AND PLACEMENT
+            printf("going to display\n");
+            camera_display(test_camera.current_x_pos, test_camera.current_y_pos, &mouse_rect, left_pressed, color, blank);
+            printf("display function ok\n");
+            test_camera.change_camera_pos(mouse_x, mouse_y);
+            Square* s = get_square(((mouse_x / 32)+test_camera.current_x_pos), ((mouse_y / 32) + test_camera.current_y_pos));
+            printf("camera and square ok\n");
+            if(s->occupied){
+                if(s->piece->button->was_clicked()){
+                    if(current_selected_piece != nullptr){
+                        current_selected_piece->is_selected = false;
+                    }
+                    current_selected_piece = s->piece;
+                    current_selected_piece->is_selected = true;
+                    current_selected_piece->button->current_picture = current_selected_piece->button->clicked_picture;
+                    current_selected_button = nullptr;
+                }
+            }
+            printf("sq ok\n");
+                
+            if(current_selected_piece != nullptr){
+                sidebar.render();
+                hp_img.render();
+                armor_img.render();
+                unit_type[(int)current_selected_piece->type]->render();
+                std::cout << (int)current_selected_piece->health << std::endl;
+                std::cout << hpstatus[(int)current_selected_piece->health]->r.x << std::endl;
+                hpstatus[(int)current_selected_piece->health]->render();
+                armorstatus[(int)current_selected_piece->armor]->render();
+                slash.render();
+                maxhp[1]->render();
+            }
+
+            sidebar2.render();
+            
+
+            if(current_selected_button != nullptr && the_game_status != PLACEMENT){
+                current_selected_button->update_button(left_pressed, &mouse_rect);
+                current_selected_button->current_picture = current_selected_button->clicked_picture;
+                current_selected_button->render(-1, -1, false);
+            }
+
+            if(right_pressed){
+                current_selected_button = nullptr;
+                if(current_selected_piece != nullptr){
+                    current_selected_piece->is_selected = false;
+                    current_selected_piece = nullptr;
+                }
+            }
+
+            if(the_game_status == PLACEMENT){
+                select_ctrl.render();
+                if(current_selected_button != nullptr){
+                    current_selected_button->update_button(left_pressed, &mouse_rect);
+                    current_selected_button->current_picture = current_selected_button->clicked_picture;
+                    current_selected_button->render(-1, -1, false);
+                }
+                for(Button2* placement_button : placement_buttons){ // check if each placement button is clicked
+                    placement_button->update_button(left_pressed, &mouse_rect);
+                    placement_button->render();
+                    if(placement_button->was_clicked()){
+                        current_selected_button = placement_button;
+                        std::cout << "changed selected piece" << std::endl;
+                        if(current_selected_piece != nullptr){ // deselect currently selected piece if there is one.
+                            current_selected_piece->is_selected = false;
+                            current_selected_piece = nullptr;
+                        }
+                    }
+                }
+
+                if(left_pressed && !right_pressed && current_selected_button != nullptr && s->occupied == false && s->is_valid){
+                    // create new Piece
+                    int type = KING;
+                    if(current_selected_button->type == "warning") type = RIFLEMAN;
+                    else if(current_selected_button->type == "king") type = KING;
+                    else if(current_selected_button->type == "engineer") type = ENGINEER;
+                    else if(current_selected_button->type == "scout") type = SCOUT;
+                    else if(current_selected_button->type == "searchlight") type = SEARCHLIGHT;
+                    else if(current_selected_button->type == "guard") type = GUARD;
+                    else if(current_selected_button->type == "rifleman") type = RIFLEMAN;
+                    else if(current_selected_button->type == "specops") type = SPECOPS;
+                    else if(current_selected_button->type == "paratrooper") type = PARATROOPER;
+
+                    Piece* p = create_piece(type, color);
+                    if(p == NULL){
+                        std::cout << "no more pieces of this type." << std::endl;
+                    }else{
+<<<<<<< HEAD
+                        p->button = new Button2(renderer, "warning", 0,0,32,32);
+						int _X = ((mouse_rect.x / 32)+test_camera.current_x_pos);
+						int _Y = ((mouse_rect.y / 32) + test_camera.current_y_pos);
+                        if(place_piece(p, _X, _Y, true)){
+                            std::cout << "PIECE PLACED X: " << _X << std::endl;
+							std::cout << "PIECE PLACED Y: " << _Y << std::endl;
+=======
+                        if(type == PARATROOPER) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == KING) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == ENGINEER) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == SCOUT) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == SEARCHLIGHT) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == GUARD) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == RIFLEMAN) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else if (type == KING) p->button = new Button2(renderer, "paratrooper", 0,0,32,32);
+                        else p->button = new Button2(renderer, "warning", 0,0,32,32);
+
+                        if(place_piece(p, ((mouse_rect.x / 32)+test_camera.current_x_pos), ((mouse_rect.y / 32) + test_camera.current_y_pos), true)){
+                            std::cout << ((mouse_rect.x / 32)+test_camera.current_x_pos)<< std::endl;
+>>>>>>> 9b9fc77628e5f162db9a2d505d8fa0cf7e3bb0c9
+                        }else{
+                            std::cout << "error: didn't place piece (square occupied)" << std::endl;
+                            delete_piece(p);
+                        }
+                    }
+                    current_selected_button = nullptr;
+                }
+                placement_ready->update_button(left_pressed, &mouse_rect);
+                placement_ready->render();
+                if(placement_ready->was_clicked()){
+                    
+                    placement_phase();
+<<<<<<< HEAD
+=======
+                    printf("done placements\n");
+                    update_board(renderer);
+>>>>>>> 9b9fc77628e5f162db9a2d505d8fa0cf7e3bb0c9
+                    printf("both players ready\n");
+                    the_game_status = MOVEMENT_PHASE;
+                    current_selected_button = nullptr;
+                    printf("changed to movement phase\n");
+                }
+            }
+
+            // SECTION 2: PIECE MOVEMENT
+
+            
+
+            if(the_game_status == MOVEMENT_PHASE){
+                if(current_selected_piece != nullptr && left_pressed){
+                    int sqx = (mouse_rect.x / 32)+test_camera.current_x_pos;
+                    int sqy = (mouse_rect.y / 32)+test_camera.current_y_pos;
+                    Square* sq = get_square(sqx, sqy);
+                    std::cout << sqx << "<><><>" << sqy << std::endl;
+                    //if(((color == 0 && sq->visibleWhite) || (color == 1 && sq->visibleBlack)) && sq->is_valid){
+                    if(sq->is_valid && sqx > 0 && sqy > 0 && sqx < HEIGHT && sqy < HEIGHT){
+                        if(abs(current_selected_piece->x - sqx < 4) && abs(current_selected_piece->y - sqy < 4)){
+                            printf("going to move\n");
+                            place_piece(current_selected_piece, sqx, sqy, false);
+                            current_selected_piece->is_selected = false;
+                            current_selected_piece = nullptr;
+                            printf("done move\n");
+                        }
+                    }
+
+                }
+            }
+
+            
+        }
+        SDL_RenderPresent(renderer); // This will actually update what the player can see.
+
+        frame_duration = SDL_GetTicks64() - frame_start_time;
+        if(frame_delay > frame_duration){
+            SDL_Delay(frame_delay - frame_duration);
+        }
+    }
+
+    bg.free_picture();
+    select_ctrl.free_picture();
+    settings_bg.free_picture();
+    b1->free_button_pictures();
+    b2->free_button_pictures();
+    b3->free_button_pictures();
+    b4->free_button_pictures();
+    b5->free_button_pictures();
+    delete b1;
+    delete b2;
+    delete b3;
+    delete b4;
+    delete b5; 
+    delete on1;
+    delete off1;
+
+    IMG_Quit();
+    TTF_CloseFont(font);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+	end_game();
+	return 0;
+}
+
+
+void start_game_old(SDL_Renderer* renderer){
+	printf("\n");
+	create_players();
+	create_headings();
+	//create_board(renderer);
+	create_board_filled(renderer);
+	mark_valid_tiles(renderer);
+
+}
+
+
+int init_png_and_font(){
+    if(IMG_Init(IMG_INIT_PNG) == 0){
+        return -1;
+    }
+    if(TTF_Init() == -1){
+        return -1;
+    }
+
+    return 0;
+}
+
+
+
+int get_home_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b1, Button2 b2, Button2 b3, bool* keep_running, bool clicked){
+    bg.render();
+    b1.update_button(clicked, mouse_pos);
+    b1.render();
+    b2.update_button(clicked, mouse_pos);
+    b2.render();
+    b3.update_button(clicked, mouse_pos);
+    b3.render();
+
+    if(b1.was_clicked()){
+        *status = SELECTION;
+    }else if(b2.was_clicked()){
+        *status = SETTINGS;
+    }else if(b3.was_clicked()){
+        *keep_running = false;
+    }
+
+    return 0;
+}
+
+int get_settings_menu(menu* status, SDL_Renderer* renderer, SDL_Rect* mouse_pos, Picture bg, Button2 b, setting* fx, setting* music, bool clicked, Button2 on1, Button2 off1){
+    bg.render();
+    b.update_button(clicked, mouse_pos);
+    b.render();
+    if(b.was_clicked()){
+        *status = HOME;
+    }
+    if(*fx == ON){
+        on1.update_button(clicked, mouse_pos);
+        on1.render();
+        if(on1.was_clicked()) *fx = OFF;
+    }else{
+        off1.update_button(clicked, mouse_pos);
+        off1.render();
+        if(off1.was_clicked()) *fx = ON;
+    }
+    return 0;
+}
+
+int get_selection_menu(menu* status, SDL_Renderer* renderer, Camera* camera, int mouse_x, int mouse_y){
+
+    *status = GAME;
+    //SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    //SDL_RenderClear(renderer);
+    return 0;
+}
+#include "picture.hpp"
+
+
+Picture::Picture(){
+
+    return;
+}
+
+Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h){
+
+    renderer = main_renderer;
+    if(renderer == NULL){
+        std::cout << "nok\n";
+        throw std::invalid_argument("Error: Recieved a null renderer.");
+    }
+
+    std::string path = "./images/" + name + ".png";
+    char* path_str = new char [path.length()+1];
+    strcpy(path_str, path.c_str());
+    surface = IMG_Load(path_str);
+    if(surface == NULL){
+        std::cout << path_str;
+        std::cout << "nok\n";
+        throw std::invalid_argument("Error creating Picture: Ensure a valid PNG exists.");
+    }
+    texture = SDL_CreateTextureFromSurface(renderer,surface);
+    if(texture == NULL){
+        std::cout << "Error creating Picture texture";
+        std::terminate();        
+    }
+
+    r.x = rect_x;
+    r.y = rect_y;
+    r.w = rect_w;
+    r.h = rect_h;
+
+    rect = &r;
+
+    return;
+}
+
+// 
+
+Picture::Picture(TTF_Font* font, SDL_Renderer* main_renderer, const char* text, int rect_x, int rect_y){
+
+    renderer = main_renderer;
+    if(renderer == NULL){
+        std::cout << "nok\n";
+        throw std::invalid_argument("Error: Recieved a null renderer.");
+    }
+    surface = TTF_RenderText_Blended(font, text, {0, 0, 0});
+    if(surface == NULL){
+        throw std::invalid_argument("Error creating Picture from font.");
+    }
+    texture = SDL_CreateTextureFromSurface(renderer,surface);
+    if(texture == NULL){
+        std::cout << "Error creating Picture texture";
+        std::terminate();        
+    }
+
+    r.x = rect_x;
+    r.y = rect_y;
+    r.w = surface->w;
+    r.h = surface->h;
+
+    rect = &r;
+
+    return;
+}
+
+void Picture::free_picture(){
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+    return;
+}
+
+void Picture::render(){
+    SDL_RenderCopy(renderer, texture, NULL, this->rect);
+    return;
+}// piece.cpp
+
+#include "piece.h"
+#include "board.h"
+#include "task.h"
+
+//////////// CREATION //////////////////////////////////////////////////////////////////////////
+
+std::vector<Piece*> pieces[NUM_COLORS];
+int piecesCreated[NUM_COLORS][NUM_PIECE_TYPES] = {0};
+int ids = 0;
+std::pair<int, int> startBounds[NUM_COLORS] = {std::make_pair(0, DIAG-1), std::make_pair(DIAG+WIDTH-2, HEIGHT-1)};
+
+
+Piece* create_piece(int type, int color){
+	if(color >= NUM_COLORS ) return NULL;
+	if(type >= NUM_PIECE_TYPES) return NULL;
+	if((piecesCreated[color][type] + 1) > MAX_PIECES_CREATED[type]) return NULL;
+	else ++piecesCreated[color][type];	
+	switch(type){
+		case KING:
+			return new Piece(KING, color);
+		case GUARD:
+			return new Piece(GUARD, color);
+		case RIFLEMAN:
+			return new Piece(RIFLEMAN, color);
+		case SPECOPS:
+			return new Piece(SPECOPS, color);
+		case PARATROOPER:
+			return new Piece(PARATROOPER, color);
+		case ENGINEER:
+			return new Piece(ENGINEER, color);
+		case SCOUT:
+			return new Piece(SCOUT, color);
+		case SEARCHLIGHT:
+			return new Piece(SEARCHLIGHT, color);
+		default:
+			return NULL;
+	}
+}
+
+
+Piece::Piece(int _type, int _color) : type(_type), color(_color){
+	this->id = ids++;
+	this->stance = ACTION;
+	this->health = STARTING_HEALTH[_type];
+	this->armor = STARTING_ARMOR[_type];
+	this->placed = false;
+	this->x = 0;
+	this->y = 0;
+	this->heading = *START_HEADINGS[_color]; 
+	this->square = NULL;
+	this->targetSquare = NULL;
+	pieces[_color].push_back(this);
+
+	std::string button_type = "pawn";
+	if(_type == RIFLEMAN){
+		button_type = "warning";
+	}
+}
+
+
+void create_pieces(){
+	for(int i = 0; i < NUM_PIECE_TYPES; ++i){
+		for(int j = 0; j < MAX_PIECES_CREATED[i]; ++j){
+			Piece* p = create_piece(i, player->color);
+		}
+	}
+}
+
+bool place_piece(Piece* piece, int x, int y, bool init){
+	
+	if(init){
+		if(piece->placed) return false;
+		int bottom = startBounds[piece->color].first;
+		int top = startBounds[piece->color].second;
+		if(!((y >= bottom) && (y <= top))) return false;
+	}
+	
+	Square* s;
+	if(!(s = get_square(x, y))) return false;
+	if(s->occupied) return false;
+
+	piece->remove();
+	s->piece = piece;
+	s->occupied = true;
+	piece->x = x;
+	piece->y = y;
+	piece->square = s;
+	piece->placed = true;
+	piece->reveal();
+
+	return true;
+}
+
+void default_placement(){
+	
+	std::vector<Piece*> ps = player->color ? pieces[BLACK] : pieces[WHITE];
+	int bottom = player->color ? HEIGHT-1 : 0;
+	int top = player->color ? HEIGHT-DIAG : DIAG-1;
+	int ymod = player->color ? -1 : 1;
+	
+	//king
+	place_piece(ps[0], CENTER-1, bottom+ymod, true);
+	//engineer
+	place_piece(ps[1], CENTER-2, top-(2*ymod), true);
+	place_piece(ps[2], CENTER+2, top-(2*ymod), true);
+	//scout
+	place_piece(ps[3], CENTER-4, top-(2*ymod), true);
+	place_piece(ps[4], CENTER+4, top-(2*ymod), true);
+	//searchlight
+	place_piece(ps[5], CENTER+1, bottom+ymod, true);
+	//gaurd
+	place_piece(ps[6], CENTER-4, bottom+(4*ymod), true);
+	place_piece(ps[7], CENTER-2, bottom+(4*ymod), true);
+	place_piece(ps[8], CENTER, bottom+4*ymod, true);
+	place_piece(ps[9], CENTER+2, bottom+(4*ymod), true);
+	//rifleman
+	place_piece(ps[10], CENTER-7, top-ymod, true);
+	place_piece(ps[11], CENTER-5, top-ymod, true);
+	place_piece(ps[12], CENTER-3, top-ymod, true);
+	place_piece(ps[13], CENTER-1, top-ymod, true);
+	place_piece(ps[14], CENTER+1, top-ymod, true);
+	place_piece(ps[15], CENTER+3, top-ymod, true);
+	place_piece(ps[16], CENTER+5, top-ymod, true);
+	place_piece(ps[17], CENTER+7, top-ymod, true);
+	//specops
+	place_piece(ps[18], CENTER-9, top-ymod, true);
+	place_piece(ps[19], CENTER-11, top-ymod, true);
+	place_piece(ps[20], CENTER+9, top-ymod, true);
+	place_piece(ps[21], CENTER+11, top-ymod, true);
+}
+
+
+//////////// VISION ////////////////////////////////////////////////////////////////////////////
+
+void Piece::reveal(){
+	switch(this->type){
+		case KING:
+			this->king_reveal();
+			break;
+		case ENGINEER:
+			this->engineer_reveal();
+			break;
+		case SCOUT:
+			this->scout_reveal();
+			break;
+		case SEARCHLIGHT:
+			this->searchlight_reveal();
+			break;
+		case GUARD:
+			this->guard_reveal();
+			break;
+		case RIFLEMAN:
+			this->rifleman_reveal();
+			break;
+		case SPECOPS:
+			this->specops_reveal();
+			break;
+		case PARATROOPER:
+			this->king_reveal();
+			break;
+		default:
+			break;
+	}
+}
+
+
+void Piece::king_reveal(){
+	Square* square = (Square*) this->square;
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
+
+	int range = KING_VISION;
+
+	Square* start;
+	if(!(start = move_selection(square, *(heading.reverse), 1))){
+		start = square;
+		--range;
+	}
+
+
+	Heading direction;
+	if(this->x < HEIGHT/2) direction = EAST;
+	else direction = WEST;
+	
+	start = move_selection(start, direction, KING_VISION/2);
+
+	for(int i = 0; i < range; ++i){
+		line_reveal(start, *direction.reverse, KING_VISION, color, vect);
+		if(!(start = move_selection(start, heading, 1))) break;
+	}
+}
+
+
+void Piece::guard_reveal(){
+	Square* square = (Square*) this->square;	
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
+	
+	Square* select = square;
+
+	for(int i = 0; i < GUARD_VISION; ++i){
+		if(select = move_selection(square, heading, i)) select->reveal(color, vect);
+		if(i == GUARD_VISION - 2 && select){
+			Square* lr;
+			if(lr = move_selection(select, *heading.left, 1)) lr->reveal(color, vect);
+			if(lr = move_selection(select, *heading.right, 1)) lr->reveal(color, vect);
+		}
+	}
+}
+
+
+void Piece::rifleman_reveal(){
+	Square* square = (Square*) this->square;
+	Heading heading = this->heading;
+	int color = this->color;
+	std::vector<void*>* vect = &this->visibleSquares;
+	
+	line_reveal(square, heading, RIFLEMAN_VISION, color, vect);
+
+	Square* select;
+	if(select = move_selection(square, *heading.right, 1))
+		select->reveal(color, vect);
+	
+	if(select = move_selection(square, *heading.left, 1))
+		select->reveal(color, vect);
+}
+
+
+void Piece::specops_reveal(){
+	if(this->stance == STEALTH) return;
+	Square* square = (Square*) this->square;	
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
+	
+	square->reveal(color, vect);
+	
+	Square* select = square;
+
+	for(int i = 1; i < SPECOPS_VISION; ++i){
+		if(select = move_selection(square, heading, i)) select->reveal(color, vect);
+		if((i == SPECOPS_VISION - 2) && select){
+			Square* lr;
+			if(lr = move_selection(select, *heading.left, 1)) lr->reveal(color, vect);
+			if(lr = move_selection(select, *heading.right, 1)) lr->reveal(color, vect);
+		}
+	}
+}
+
+
+void Piece::paratrooper_reveal(){
+	if(this->stance == STEALTH) return;
+};
+
+
+void Piece::engineer_reveal(){
+	Square* square = (Square*) this->square;	
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
+	
+	Square* select = square;
+
+	for(int i = 0; i < ENGINEER_VISION; ++i){
+		if(select = move_selection(square, heading, i)) select->reveal(color, vect);
+		if(i == ENGINEER_VISION - 2 && select){
+			Square* lr;
+			if(lr = move_selection(select, *heading.left, 1)) lr->reveal(color, vect);
+			if(lr = move_selection(select, *heading.right, 1)) lr->reveal(color, vect);
+		}
+	}
+}
+
+
+void Piece::scout_reveal(){
+	Square* square = (Square*) this->square;
+	bool color = this->color;
+	Heading heading = this->heading;
+	std::vector<void*>* vect = &this->visibleSquares;
+
+	if(this->stance != STEALTH){
+		line_reveal(square, heading, SCOUT_VISION, color, vect);
+
+		Heading lr[2] = {*this->heading.left, *this->heading.right};
+		for(int i = 0; i < 2; ++i){
+			for(int j = 0, r = SCOUT_VISION-1; j < SCOUT_VISION; ++j, --r){
+				if(!(square = move_selection(square, lr[i], 1))) break;
+				line_reveal(square, heading, r, color, vect);
+			}
+			square = (Square*) this->square;
+		}	
+	}
+	else{
+		for(int i = 0; i < 8; ++i){
+			Square* select = square;
+			if(!(select = move_selection(square, headings[i], 1))) continue;
+			select->reveal(color, vect);
+		}
+	}
+}
+
+
+void Piece::searchlight_reveal(){
+	Square* square = (Square*) this->targetSquare;
+	if(!square) return;
+	bool color = this->color;
+	std::vector<void*>* vect = &this->visibleSquares;
+	Heading vertical, horizontal;
+
+	if(square->y < HEIGHT/2) vertical = NORTH;
+	else vertical = SOUTH;
+	square = move_selection(square, vertical, SEARCHLIGHT_VISION/2);
+
+	if(square->x < HEIGHT/2) horizontal = EAST;
+	else horizontal = WEST;
+	square = move_selection(square, horizontal, SEARCHLIGHT_VISION/2);
+
+	Square* start = square;
+	for(int i = 0; i < SEARCHLIGHT_VISION; ++i){
+		line_reveal(start, *horizontal.reverse, SEARCHLIGHT_VISION, color, vect);
+		if(!(start = move_selection(start, *vertical.reverse, 1))) break;
+	}
+}
+
+
+void Piece::unreveal(){
+	for(void* square : this->visibleSquares){
+		Square* s = (Square*) square;
+		s->unreveal(this->color);
+	}
+	this->visibleSquares.clear();
+}
+
+
+void reveal_pieces(){
+	for(int i = 0; i < NUM_COLORS; ++i){
+		for(Piece* piece : pieces[i]) piece->reveal();
+	}
+}
+
+
+//////////// MUTATIONS /////////////////////////////////////////////////////////////////////////
+
+bool Piece::set_stance(int s){
+	if(this->type == SEARCHLIGHT) return false;
+	if(this->type == KING) return false;
+	if(this->stance == s) return true;
+	if((s == DEFEND) && (this->type == SCOUT)) return false;
+	if((s == STEALTH) && !((this->type == SCOUT) || (this->type == SPECOPS) || (this->type == PARATROOPER))) return false;
+	this->stance = s;
+	this->unreveal();
+	this->reveal();
+	return true;
+}
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::turn(Heading* h){
+	if(!this->placed) return false;
+	if((this->type == KING) || (this->type == SEARCHLIGHT)) return false;
+	this->heading = *h;
+	this->unreveal();
+	this->reveal();
+	return true;
+}
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::set_target(int x, int y){
+	if(this->type == SCOUT) return false;
+
+	Square* ts = get_square(x, y);
+
+	if(this->type == SEARCHLIGHT){
+		int midline = (HEIGHT-1)/2;
+		if(this->color == WHITE && y < midline) return true;
+		if(this->color == BLACK && y > midline) return true;
+		return false;
+	}
+	if(this->type != KING){
+		if(!(ts && ts->occupied)) return false;
+		if(!((this->type == ENGINEER) ^ (this->color != ts->piece->color))) return false;
+		bool cont = false;
+		for(void* s : this->visibleSquares) if(((Square*) s) == ts) cont = true;
+		if(!cont) return false;
+	}
+
+	this->targetSquare = ts;
+
+	return true;
+}
+
+
+
+//////////// ACTIONS ///////////////////////////////////////////////////////////////////////////
+
+void Piece::cancel(){
+	this->tasks.push(new Task(CANCEL, this, NORTH));
+}
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::move(Heading h, int endX, int endY){
+	if(!this->placed) return false;
+	if(this->type == SEARCHLIGHT) return false;
+	if(this->stance != ACTION) return false;
+	if(!get_square(endX, endY)) return false;
+	
+	//if(!players[this->color]->drain_stamina(STAMINA_DRAIN[this->type]))
+	//	return false;
+	
+	int startX = this->x;
+	int startY = this->y;
+	
+	while((startX != endX) || (startY != endY))
+		this->tasks.push(new Task(MOVEMENT, this, h));
+		startX += h.x;
+		startY += h.y;
+
+	return true;
+}
+
+
+void Piece::bump(int x, int y){
+	this->cancel();
+	if(!get_square(x, y)) return;
+	Piece* p = get_square(x, y)->piece;
+	if(p->color != this->color){
+		p->cancel();
+		p->set_stance(ACTION);	
+		this->set_stance(ACTION);
+	}
+}
+
+
+bool Piece::remove(){
+	if(!this->placed) return false;
+	Square* square = (Square*) this->square;
+	square->occupied = false;
+	square->piece = NULL;
+	this->square = NULL;
+	this->placed = false;
+	this->unreveal();
+	return true;
+}
+
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::attack(){
+	if(this->stance != ACTION) return false;
+	if(!IS_ATTACKING_PIECE(this->type)) return false;
+	if(!this->placed) return false; 
+	if(!this->targetSquare) return false;
+	Piece* target = ((Square*) this->targetSquare)->piece;
+	int hd = HEALTH_DAMAGE[type];
+	int ad = ARMOR_DAMAGE[type];
+	if(target->stance == DEFEND){
+		hd = DEFEND_HEALTH_DAMAGE_MOD(hd); 
+		ad = DEFEND_ARMOR_DAMAGE_MOD(ad);
+	}
+	target->armor -= ad;
+	if(target->armor < 0){
+		target->armor = 0;
+		hd = ZERO_ARMOR_DAMAGE_MOD(hd);
+	}
+	target->health -= hd;
+	if(target->health <= 0){
+		delete_piece(target);	
+		this->targetSquare = NULL;
+	}
+
+	return true;
+}
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::repair(){
+	if(this->stance != ACTION) return false;
+	if(this->type != ENGINEER) return false;
+	if(!this->placed) return false;
+	if(!this->targetSquare) return false;
+	Piece* target = ((Square*) this->targetSquare)->piece;
+	if(!target->armor < STARTING_ARMOR[target->type]) return false;
+	++target->armor;
+	return true;
+}
+
+//--------------------------------------------------------------------------------------------//
+
+bool Piece::reassign(int type){
+	if(this->type != KING) return false;
+	if(this->stance != ACTION) return false;
+	if(type >= NUM_PIECE_TYPES) return false;
+	if((type == SEARCHLIGHT) || (type == KING)) return false;
+	Square* pos = (Square*) this->targetSquare;
+	if(!pos) return false;
+	if(!pos->occupied) return false;
+	Piece* target = pos->piece;
+	if(target->type == type) return false;
+	if(target->color != this->color) return false;
+
+	if(!(piecesCreated[color][type] < MAX_PIECES_CREATED[type])) return false;
+
+	delete_piece(target);
+	Piece* p = create_piece(type, this->color);
+	place_piece(p, pos->x, pos->y, false);
+	return true;
+}
+
+
+//////////// DELETION //////////////////////////////////////////////////////////////////////////
+
+void delete_piece(Piece* p){
+	p->remove();
+	int size = pieces[p->color].size();
+	int i = 0;
+	for(; i < size; i++) if(pieces[p->color][i] == p) break;
+	pieces[p->color].erase(pieces[p->color].begin() + i);
+	--piecesCreated[p->color][p->type];
+	delete(p);
+}
+
+
+void delete_pieces(){
+	for(int i = 0; i < NUM_COLORS; ++i){
+		while(!pieces[i].empty()) delete_piece(pieces[i].front());
+	}
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+void print_pieces(){
+	for(int i = 0; i < NUM_COLORS; ++i){
+		printf("Color %d Pieces:\n", i);
+		for(Piece* piece: pieces[i]) printf("%d ", piece->type);
+		printf("\n");
+	}
+}
+
+
+// player.cpp
+
+
+#include "player.h"
+
+Player* players[NUM_COLORS];
+Player* player;
+
+Player::Player(int _color) : color(_color){
+	this->stamina = STARTING_STAMINA;
+}
+
+bool Player::drain_stamina(int rate){
+	if(DEBUG) return true;
+	if(this->stamina < rate) return false;
+	this->stamina -= rate;
+	return true;
+}
+
+void Player::recharge_stamina(int amount){
+	this->stamina += amount;
+	if(this->stamina > MAX_STAMINA) this->stamina = MAX_STAMINA;
+}
+
+void create_players(){
+	for(int i = 0; i < NUM_COLORS; ++i){
+		players[i] = new Player(i);
+	}
+}
+
+void delete_players(){
+	for(Player* p : players) delete(p);
+}
+#include "task.h"
+
+bool gameOver = false;
+std::vector<int*> movementMsgs;
+
+
+Task::Task(int _t, Piece* _p, Heading _h){
+	this->type = _t;
+	this->piece = _p;
+	this->heading = _h;
+}
+
+
+void movement(){
+	std::vector<Task*> tasks;
+		
+	for(Piece* p : pieces[player->color]){
+		if(!p->tasks.empty()){
+			Task* t = (Task*) p->tasks.front();
+			p->tasks.pop();
+			tasks.push_back(t);
+		}
+	}
+
+	auto rng = std::default_random_engine {};
+	std::shuffle(std::begin(tasks), std::end(tasks), rng);
+
+	while(!tasks.empty()){
+		Task* t = tasks.back();
+		tasks.pop_back();
+		Piece* p = t->piece;
+		Heading h = t->heading;
+		if(t->type == CANCEL){
+			while(!p->tasks.empty()){
+				delete((Task*) p->tasks.front());
+				p->tasks.pop();
+			}
+		}
+		else if(t->type == MOVEMENT){
+			if(!place_piece(p, p->x + h.x, p->y + h.y, false))
+				p->bump(p->x + h.x, p->y + h.y);
+		}
+		delete(t);
+	}
+}
+
+
+
+
+
+
+
+
+// test.cpp
+
+
+#include "test.h"
+
+
+void run_tests(){
+}
+
+////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+#include "tile.hpp"
+
+Tile::Tile(int x_location, int y_location, Picture* tpicture){
+
+    x = x_location;
+    y = y_location;
+    picture = tpicture;
+
+}
+
+// Render the tile. Since it is placed on a scrollable map, the rectangle will need to be moved.
+
+void Tile::render(int xmod, int ymod){
+    picture->rect->x = xmod*32;
+    picture->rect->y = ymod*32;
+    SDL_RenderCopy(picture->renderer, picture->texture, NULL, picture->rect );
+}
+// board.h
+
+#ifndef _BOARD_H
+#define _BOARD_H
+
+#include <iostream>
+#include <unordered_map>
+
+#include "default.h"
+#include "heading.h"
+#include "piece.h"
+
+#include "picture.hpp"
+#include <string>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
+#include <iostream>
+#include <stdexcept>
+
+
+class Square{
+public:
+	const int x;
+	const int y;
+
+	Piece* piece;
+	bool occupied;
+	bool is_valid;
+	int visibleWhite;
+	int visibleBlack;
+
+	Square(int _x, int _y, SDL_Renderer* renderer);
+	
+
+	void reveal(int color, std::vector<void*>* vect);
+	void unreveal(int color);
+	void print_square();
+
+	// extras (from merging the Tile class)
+	Picture* picture = nullptr;
+	void render(int xmod, int ymod);
+};
+
+
+Square* get_square(int x, int y);
+Square* get_square_old(int x, int y);
+
+extern std::unordered_map<uint64_t, Square*> board;
+
+Square* line_reveal(Square* s, Heading h, int range, bool color, std::vector<void*>* vect);
+Square* move_selection(Square* s, Heading h, int magnitude);
+
+void create_board(SDL_Renderer* renderer);
+void delete_board();
+
+void print_board();
+void print_visible_squares();
+
+void camera_display(int current_x, int current_y, SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank);
+void create_board_filled(SDL_Renderer* renderer);
+void mark_valid_tiles(SDL_Renderer* renderer);
+void update_board(SDL_Renderer* renderer);
+
+#endif
+// client .h
+
+#ifndef _CLIENT_H
+#define _CLIENT_H
+
+
+#include<arpa/inet.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <string.h>
+#include <errno.h>
+#include <ctype.h>
+#include <mutex>
+#include <csignal>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <thread>
+#include <SDL2/SDL.h>
+
+#include "board.h"
+#include "player.h"
+#include "test.h"
+#include "task.h"
+#include "default.h"
+#include "coms.h"
+
+
+typedef struct _flag{
+	bool disconnect;
+	bool shutdown;
+	bool update;
+	std::mutex mutex;
+} Flag;
+
+
+void sigint_handler(int signal);
+void game(int color, SDL_Renderer* renderer);
+
+void start_tick();
+
+
+// phases
+void placement_phase();
+void movement_test();
+
+
+// process message
+void process_message(int* msg);
+void process_initial_placement_message(int* msg);
+void process_update_message(int* msg);
+
+
+// create message
+int* create_initial_placement_message();
+int* create_update_message();
+
+
+// tick
+void tick();
+void process_tick(char ch);
+
+
+// io
+int* read_message();
+void write_message(int* msg);
+void split_read(char* m, int len);
+void split_write(char* m, int len);
+
+
+// init
+void start_game(int color, SDL_Renderer* renderer);
+void end_game();
+Flag* init_flags();
+struct sockaddr_in get_socket_addr(int port);
+int get_client_socket();
+
+
+// util
+void set_flag(bool& flag, bool setval);
+bool check_flag(bool flag);
+void sec_sleep(float period);
+void print_message(int* m, int size);
+void print_flags();
+
+int join_game(SDL_Renderer* renderer);
+
+
+
+#endif
+#ifndef _COMS_H
+#define _COMS_H
+
+#include "default.h"
+
+#define PORT 49999
+#define TICK_PORT 48888
+#define ADDRESS "127.0.0.1"
+#define BUFF_SIZE PATH_MAX + 1 
+
+
+#define ERROR_CODE 'e'
+#define ACCEPT_CODE 'a'
+
+
+enum MSG_TYPE
+{
+	MSG_TYPE_ERROR,
+	MSG_TYPE_STARTGAME,
+	MSG_TYPE_INITIAL_PLACEMENT,
+	MSG_TYPE_RESPONSE,
+	MSG_TYPE_CANCEL,
+	MSG_TYPE_UPDATE,
+	MSG_TYPE_PLACE,
+	MSG_TYPE_MOVE,
+	NUM_MSG_TYPES
+};
+
+
+enum S_HEADER
+{
+	S_SIZE,
+	S_TYPE,
+	S_HEADER_SIZE
+};
+
+
+enum C_HEADER
+{
+	C_SIZE,
+	C_TYPE,
+	C_COLOR,
+	C_HEADER_SIZE
+};
+
+
+enum S_STARTGAME{
+	S_CLIENT_COLOR = S_HEADER_SIZE,
+	S_STARTGAME_SIZE
+};
+
+
+enum C_INITIAL_PLACEMENT
+{
+	C_INITIAL_PLACEMENT_BODY = C_HEADER_SIZE,
+	C_IPP_TYPE = 0,
+	C_IPP_X,
+	C_IPP_Y,
+	C_IPP_SIZE,
+	C_INITIAL_PLACEMENT_SIZE = C_HEADER_SIZE+(NUM_START_PIECES*C_IPP_SIZE)
+};
+
+
+enum S_RESPONSE 
+{
+	S_ERROR_TYPE = S_HEADER_SIZE,
+	S_RESPONSE_SIZE
+};
+
+
+enum C_PLACE
+{
+	C_PLACE_TYPE = C_HEADER_SIZE,
+	C_PLACE_COLOR,
+	C_PLACE_X,
+	C_PLACE_Y,
+	C_PLACE_SIZE
+};
+
+
+enum C_UPDATE
+{
+	C_UPDATE_BODY = C_HEADER_SIZE,
+	C_UPDATE_TYPE = 0,
+	C_UPDATE_START_X,
+	C_UPDATE_START_Y,
+	C_UPDATE_END_X,
+	C_UPDATE_END_Y,
+	C_UPDATE_STANCE,
+	C_UPDATE_SIZE
+};
+
+
+enum ERROR_TYPES{
+	NO_ERROR
+};
+
+
+
+
+#endif
+// default.h
+
+#ifndef _DEFAULT_H
+#define _DEFAULT_H
+
+#define DEBUG 1
+
+#include <cstdint>
+#include <math.h>
+#include <iostream>
+
+#define PHASE_TIME_LIMIT 30
+
+#define WIDTH 15
+const int DIAG = (int) (WIDTH/sqrt(2));
+const int HEIGHT = WIDTH + 2*DIAG - 2;
+const int TOTAL = (WIDTH*WIDTH)+(4*(WIDTH*(DIAG-1)))+(4*(((DIAG-2)*(DIAG-1))/2));
+const int CENTER = (int) (HEIGHT/2);
+
+
+#define NUM_COLORS 2
+enum COLORS{
+	WHITE,
+	BLACK
+};
+
+#define MAX_STAMINA 10
+#define STARTING_STAMINA 10
+#define STAMINA_RECHARGE 3
+
+
+#define IS_ATTACKING_PIECE(type) ((bool) ((type) > (3)))
+enum PIECE_TYPES{
+	KING,
+	ENGINEER, 
+	SCOUT,
+	SEARCHLIGHT,
+	GUARD,
+	RIFLEMAN,
+	SPECOPS,
+	PARATROOPER,
+	NUM_PIECE_TYPES
+};
+
+
+#define NUM_START_PIECES 22
+
+#define KING_MAX 1
+#define ENGINEER_MAX 2
+#define SCOUT_MAX 2
+#define SEARCHLIGHT_MAX 1
+#define GUARD_MAX 4
+#define RIFLEMAN_MAX 8
+#define SPECOPS_MAX 4
+#define PARATROOPER_MAX 4
+
+const int MAX_PIECES_CREATED[NUM_PIECE_TYPES] =
+{
+	KING_MAX,
+	ENGINEER_MAX,
+	SCOUT_MAX,
+	SEARCHLIGHT_MAX,
+	GUARD_MAX,
+	RIFLEMAN_MAX,
+	SPECOPS_MAX, 
+	PARATROOPER_MAX
+};
+
+#define KING_STAMINA_DRAIN 1.0f
+#define ENGINEER_STAMINA_DRAIN 2.0f
+#define SCOUT_STAMINA_DRAIN 1.0f
+#define SEARCHLIGHT_STAMINA_DRAIN -1.0f
+#define GUARD_STAMINA_DRAIN 3.0f
+#define RIFLEMAN_STAMINA_DRAIN 1.0f
+#define SPECOPS_STAMINA_DRAIN 2.0f
+#define PARATROOPER_STAMINA_DRAIN 2.0f
+
+const float STAMINA_DRAIN[NUM_PIECE_TYPES] = 
+{
+	KING_STAMINA_DRAIN,
+	ENGINEER_STAMINA_DRAIN,
+	SCOUT_STAMINA_DRAIN,
+	SEARCHLIGHT_STAMINA_DRAIN,
+	GUARD_STAMINA_DRAIN,
+	RIFLEMAN_STAMINA_DRAIN,
+	SPECOPS_STAMINA_DRAIN,
+	PARATROOPER_STAMINA_DRAIN
+};
+
+#define KING_HEALTH_DAMAGE 0
+#define ENGINEER_HEALTH_DAMAGE 0
+#define SCOUT_HEALTH_DAMAGE 0
+#define SEARCHLIGHT_HEALTH_DAMAGE 0
+#define GUARD_HEALTH_DAMAGE 0
+#define RIFLEMAN_HEALTH_DAMAGE 2
+#define SPECOPS_HEALTH_DAMAGE 0
+#define PARATROOPER_HEALTH_DAMAGE 0
+
+const int HEALTH_DAMAGE[NUM_PIECE_TYPES] = 
+{
+	KING_HEALTH_DAMAGE,
+	ENGINEER_HEALTH_DAMAGE,
+	SCOUT_HEALTH_DAMAGE,
+	SEARCHLIGHT_HEALTH_DAMAGE,
+	GUARD_HEALTH_DAMAGE,
+	RIFLEMAN_HEALTH_DAMAGE,
+	SPECOPS_HEALTH_DAMAGE,
+	PARATROOPER_HEALTH_DAMAGE
+};
+
+
+#define KING_ARMOR_DAMAGE 0
+#define ENGINEER_ARMOR_DAMAGE 0
+#define SCOUT_ARMOR_DAMAGE 0
+#define SEARCHLIGHT_ARMOR_DAMAGE 0
+#define GUARD_ARMOR_DAMAGE 0
+#define RIFLEMAN_ARMOR_DAMAGE 1
+#define SPECOPS_ARMOR_DAMAGE 0
+#define PARATROOPER_ARMOR_DAMAGE 0
+
+
+const int ARMOR_DAMAGE[NUM_PIECE_TYPES] = 
+{
+	KING_ARMOR_DAMAGE,
+	ENGINEER_ARMOR_DAMAGE,
+	SCOUT_ARMOR_DAMAGE,
+	SEARCHLIGHT_ARMOR_DAMAGE,
+	GUARD_ARMOR_DAMAGE,
+	RIFLEMAN_ARMOR_DAMAGE,
+	SPECOPS_ARMOR_DAMAGE,
+	PARATROOPER_ARMOR_DAMAGE
+};
+
+#define KING_STARTING_HEALTH 1
+#define ENGINEER_STARTING_HEALTH 1
+#define SCOUT_STARTING_HEALTH 1
+#define SEARCHLIGHT_STARTING_HEALTH 1
+#define GUARD_STARTING_HEALTH 1
+#define RIFLEMAN_STARTING_HEALTH 4
+#define SPECOPS_STARTING_HEALTH 1
+#define PARATROOPER_STARTING_HEALTH 1
+
+const int STARTING_HEALTH[NUM_PIECE_TYPES] =
+{
+	KING_STARTING_HEALTH,
+	ENGINEER_STARTING_HEALTH,
+	SCOUT_STARTING_HEALTH,
+	SEARCHLIGHT_STARTING_HEALTH,
+	GUARD_STARTING_HEALTH,
+	RIFLEMAN_STARTING_HEALTH,
+	SPECOPS_STARTING_HEALTH,
+	PARATROOPER_STARTING_HEALTH
+};
+
+#define KING_STARTING_ARMOR 0
+#define ENGINEER_STARTING_ARMOR 1
+#define SCOUT_STARTING_ARMOR 1
+#define SEARCHLIGHT_STARTING_ARMOR 1
+#define GUARD_STARTING_ARMOR 2
+#define RIFLEMAN_STARTING_ARMOR 1
+#define SPECOPS_STARTING_ARMOR 1
+#define PARATROOPER_STARTING_ARMOR 1
+
+const int STARTING_ARMOR[NUM_PIECE_TYPES] =
+{
+	KING_STARTING_ARMOR,
+	ENGINEER_STARTING_ARMOR,
+	SCOUT_STARTING_ARMOR,
+	SEARCHLIGHT_STARTING_ARMOR,
+	GUARD_STARTING_ARMOR,
+	RIFLEMAN_STARTING_ARMOR,
+	SPECOPS_STARTING_ARMOR,
+	PARATROOPER_STARTING_ARMOR
+};
+
+#define DEFEND_HEALTH_DAMAGE_MOD(hd) ((int) (hd) / (2))
+#define DEFEND_ARMOR_DAMAGE_MOD(ad) ((int) (ad) / (2))
+#define ZERO_ARMOR_DAMAGE_MOD(hd) ((int) (hd) + (1))
+
+
+#define KING_VISION 5
+#define ENGINEER_VISION 2
+#define SCOUT_VISION 6
+#define SEARCHLIGHT_VISION 5
+#define GUARD_VISION 2
+#define RIFLEMAN_VISION 4
+#define SPECOPS_VISION 3
+#define PARATROOPER_VISION 3
+
+const int VISION[NUM_PIECE_TYPES] = 
+{
+	KING_VISION,
+	ENGINEER_VISION,
+	SCOUT_VISION,
+	SEARCHLIGHT_VISION,
+	GUARD_VISION,
+	RIFLEMAN_VISION,
+	SPECOPS_VISION,
+	PARATROOPER_VISION
+};
+
+
+#define EAST (headings[0])
+#define NORTHEAST (headings[1])
+#define NORTH (headings[2])
+#define NORTHWEST (headings[3])
+#define WEST (headings[4])
+#define SOUTHWEST (headings[5])
+#define SOUTH (headings[6])
+#define SOUTHEAST (headings[7])
+
+
+enum STANCES
+{
+	ACTION,
+	DEFEND,
+	STEALTH
+};
+
+enum TASKS
+{
+	MOVEMENT,
+	CANCEL
+};
+
+#endif
+// heading.h
+
+
+#ifndef _HEADING_H
+#define _HEADING_H
+
+#include "default.h"
+
+class Heading{
+public:
+	int id;
+
+	int x;
+	int y;
+
+	Heading* left;
+	Heading* right;
+	Heading* reverse;
+
+};
+
+extern Heading headings[8];
+extern Heading* START_HEADINGS[NUM_COLORS];
+
+void create_headings();
+
+
+
+#endif
+// main.h
+#include <SDL2/SDL.h>
+
+#ifndef _MAIN_H
+#define _MAIN_H
+
+
+void start_game(SDL_Renderer* renderer);
+void end_game();
+
+
+#endif
+// piece.h
+
+#ifndef _PIECE_H
+#define _PIECE_H
+
+#include <queue>
+#include <vector>
+#include <mutex>
+
+#include "default.h"
+#include "heading.h"
+#include "player.h"
+#include "button2.hpp"
+
+class Piece{
+public:
+	int id;
+	const int type;
+	const int color;
+
+	int health;
+	int armor;
+	 
+	bool placed;
+	int x;
+	int y;
+
+	Heading heading;	
+
+	int stance;
+
+	void* square; 
+	void* targetSquare;
+
+	std::vector<void*> visibleSquares;
+	
+	Piece(int _type, int _color);
+
+	std::queue<void*> tasks;
+
+	void cancel();
+
+	void reveal();
+	void unreveal();
+
+	bool set_stance(int s);
+	bool turn(Heading* h);
+	bool set_target(int x, int y);
+
+	bool move(Heading h, int endX, int endY);
+	void bump(int x, int y);
+	bool remove();
+	bool attack();
+	bool repair();
+	bool scan();
+	bool orbital_strike();
+	bool airdrop();
+	bool reassign(int type);
+
+	Button2* button = nullptr;
+	bool is_selected = false;
+
+private:
+	int get_distance(int x, int y);
+
+	void king_reveal();
+	void guard_reveal();
+	void rifleman_reveal();
+	void specops_reveal();
+	void paratrooper_reveal();
+	void engineer_reveal();
+	void scout_reveal();
+	void searchlight_reveal();
+};
+
+
+
+extern std::vector<Piece*> pieces[NUM_COLORS];
+extern int piecesCreated[NUM_COLORS][NUM_PIECE_TYPES];
+bool inc_created_pieces(int type, int color);
+Piece* create_piece(int type, int _color);
+void push_piece(Piece* piece);
+bool place_piece(Piece* piece, int x, int y, bool init);
+void default_placement();
+
+void reveal_pieces();
+
+void dec_created_pieces(int type, int color);
+void delete_piece(Piece* p);
+void delete_pieces();
+
+void print_pieces();
+
+void create_pieces();
+
+#endif
+// player.h
+
+
+#ifndef _PLAYER_H
+#define _PLAYER_H
+
+#include "default.h"
+
+class Player{
+public:
+	const int color;
+	int stamina;
+
+	Player(int _color);
+
+	bool drain_stamina(int rate);
+	void recharge_stamina(int amount);
+};
+
+extern Player* players[NUM_COLORS];
+extern Player* player;
+
+void create_players();
+void delete_players();
+
+#endif
+// task.h
+
+#ifndef _TASK_H
+#define _TASK_H
+
+#include <queue>
+#include <stack>
+#include <vector>
+#include <mutex>
+#include <algorithm>
+#include <chrono>
+#include <random>
+
+#include "default.h"
+#include "piece.h"
+#include "board.h"
+#include "heading.h"
+
+extern bool gameOver;
+
+class Task{
+public:
+	int type;
+	Piece* piece;
+	
+	Heading heading;
+
+	Task(int _t, Piece* _p, Heading _h);
+};
+
+
+
+void movement();
+
+#endif
+// test.h
+
+
+#ifndef _TEST_H
+#define _TEST_H
+
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <cassert>
+
+#include "default.h"
+#include "board.h"
+#include "piece.h"
+#include "heading.h"
+#include "player.h"
+#include "task.h"
+
+
+void run_tests();
+void test_player_init();
+void test_player_stamina();
+void test_square_get();
+void test_square_attr();
+void test_piece_creation();
+void test_piece_placement();
+void test_piece_movement();
+void test_piece_target();
+void test_piece_turn();
+void test_piece_stance();
+void test_piece_attack();
+void test_piece_repair();
+void test_piece_reassign();
+void test_task_creation();
+
+#endif
+
+# BINARIES=main.o player.o board.o heading.o piece.o test.o
+# CPPS=main.cpp player.cpp board.cpp heading.cpp piece.cpp test.cpp
+
+# .PHONY: default move build back slow clean
+
+# default: move build back
+
+# build: $(BINARIES)
+# 	g++ -o run $(BINARIES) 
+
+# slow:
+# 	g++ -o run $(CPPS)
+
+# clean:
+# 	rm *.o
+
+
+# main.o: main.cpp main.h board.h player.h test.h default.h 
+# 	g++ -c main.cpp
+# player.o: player.cpp player.h
+# 	g++ -c player.cpp
+# board.o: board.cpp board.h 
+# 	g++ -c board.cpp
+# heading.o: heading.cpp heading.h 
+# 	g++ -c heading.cpp	
+# piece.o: piece.cpp piece.h board.h  
+# 	g++ -c piece.cpp
+# test.o: test.cpp test.h 
+# 	g++ -c test.cpp
+
+# main.h: 
+# player.h: default.h
+# board.h: default.h heading.h piece.h
+# headings.h: default.h
+# piece.h: default.h heading.h player.h
+# test.h: default.h board.h piece.h heading.h player.h
+# defaults.h: 
+
+tbsgame: main.cpp
+	g++ main.cpp button2.cpp picture.cpp tile.cpp camera.cpp piece.cpp board.cpp heading.cpp player.cpp client.cpp task.cpp -lSDL2 -lSDL2_image -lSDL2_ttf -o cli
+
+
+
+// server.cpp
+
+
+#include "server.h"
+
+
+std::atomic<bool>* killFlag;
+
+
+void init_killFlag(){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	killFlag = (std::atomic<bool>*) mmap(NULL, sizeof(std::atomic<bool>), prot, opts, -1, 0);
+	*killFlag = { false };
+}
+
+
+typedef struct _counter{
+	uint64_t value = 0;
+	std::binary_semaphore sem{0};
+} Counter;
+
+void inc(Counter* c){
+	c->sem.acquire();
+	++(c->value);
+	c->sem.release();
+}
+
+void dec(Counter* c){
+	c->sem.acquire();
+	--(c->value);
+	c->sem.release();
+}
+
+Counter* create_counter(){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	Counter* c = (Counter*) mmap(NULL, sizeof(Counter), prot, opts, -1, 0);
+	c->sem.release();
+	return c;
+}
+
+
+int masterProcessId;
+uint64_t nextClientId;
+uint64_t nextGameId;
+
+int serverSocket;
+int tickSocket;
+
+std::unordered_map<uint64_t, Game*>* ongoingGames;
+std::binary_semaphore sem_ongoingGames{1};
+Counter* runningGamesCounter;
+
+std::unordered_map<uint64_t, Client*>* connectedClients;
+std::binary_semaphore sem_connectedClients{1};
+
+std::queue<Client*> waitingClients;
+std::binary_semaphore sem_waitingClients{1};
+
+std::thread cleanGames(clean_games);
+std::counting_semaphore<SEM_VALUE_MAX> signal_cleanGames{0};
+
+std::thread cleanClients(clean_clients);
+std::counting_semaphore<SEM_VALUE_MAX> signal_cleanClients{0};
+
+
+auto rng = std::default_random_engine {};
+Game* game;
+Flag* flag;
+
+
+void signal_handler(int signal){
+	if(getpid() == masterProcessId){
+		std::cout << "Master process " << masterProcessId << " shuting down...\n";
+
+		set_flag(*killFlag, true);
+					
+		std::cout << "Shuting down clean_games thread...\n";
+		signal_cleanGames.release();
+		sem_ongoingGames.release();
+		cleanGames.join();
+
+		std::cout << "Shuting down clean_clients thread...\n";
+		signal_cleanClients.release();
+		sem_connectedClients.release();
+		cleanClients.join();
+
+		close(serverSocket);
+		close(tickSocket);
+
+		while(runningGamesCounter->value) sec_sleep(0.1);
+		set_flag(*killFlag, false);
+		sec_sleep(0.1);
+		munmap(killFlag, sizeof(std::atomic<bool>));
+		munmap(runningGamesCounter, sizeof(Counter));
+		std::cout << "killFlag deleted.\n";
+
+		std::cout << "Master process shutdown.\n";
+		exit(signal);	
+	}
+}
+
+
+void alloc(){
+	init_killFlag();
+	runningGamesCounter = create_counter(); 
+	ongoingGames = new std::unordered_map<uint64_t, Game*>;
+	connectedClients = new std::unordered_map<uint64_t, Client*>;
+	start_listen(&serverSocket, PORT);
+	start_listen(&tickSocket, TICK_PORT);
+}
+
+
+int main(){
+	std::signal(SIGINT, signal_handler);
+	std::signal(SIGTERM, signal_handler);
+	std::signal(SIGHUP, signal_handler);
+	masterProcessId = getpid();
+
+	alloc();
+
+	struct sockaddr_in addr;
+	socklen_t len = sizeof(struct sockaddr_in);
+
+
+	while(1){
+		Client* client = get_connection(&addr, &len);
+		get_client_request(client);
+	}
+	return 0;
+}
+
+
+Client* get_connection(sockaddr_in* addr, socklen_t* len){
+	std::cout << "Ready for connections...\n";
+	int clientSocket = accept(serverSocket, (struct sockaddr*) addr, len);
+	if(clientSocket == -1){
+		std::cout << "ERROR: Connection failed\n"; 
+		return NULL;
+	}
+	int clientTickSocket = accept(tickSocket, (struct sockaddr*) addr, len);
+	if(clientSocket == -1){
+		std::cout << "ERROR: Connection failed\n"; 
+		return NULL;
+	}
+	return create_client(clientSocket, clientTickSocket);
+}
+
+
+void get_client_request(Client* client){
+	char c;
+	if(!smart_read(client->socket, &c, 1)){ // read client request
+		std::cout << "Request cancelled -> client disconnected\n";
+		set_client_connection_status(client, DEAD);
+		return;
+	}
+
+	sem_connectedClients.acquire();
+	connectedClients->insert({client->id, client});
+	sem_connectedClients.release();
+
+	switch(c){
+		case 'n':
+			process_new_game_request(client);			
+			return;
+		case 'r':
+			return;
+	}
+}
+
+void process_new_game_request(Client* client){
+	std::cout << "Client #" << client->id << " request: New Game\n";
+	if(!smart_write(client->socket, (char*) &(client->id), sizeof(uint64_t))){  // write client ID
+		std::cout << "New Game request cancelled -> client disconnected\n";
+		set_client_connection_status(client, DEAD);
+		return;
+	}
+
+	waitingClients.push(client);
+	if(waitingClients.size() >= NUM_COLORS) new_game();
+}
+
+
+///////////////////// INITIALZIE GAME ////////////////////////////////////////////////////////////////////
+
+void new_game(){
+	std::cout << "Starting new game...\n";
+	Game* newgame = create_game();
+
+	sem_ongoingGames.acquire();
+	ongoingGames->insert({newgame->id, newgame});
+	sem_ongoingGames.release();
+
+	for(int i = 0; i < NUM_COLORS; ++i){
+		newgame->clients[i] = waitingClients.front();
+		newgame->clients[i]->gameId = newgame->id;
+		waitingClients.pop();
+	}
+	if(!init_game(newgame)){
+		set_game_status(newgame, DEAD);
+		for(int i = 0; i < NUM_COLORS; ++i){
+			if(check_client_connection_status(newgame->clients[i]) != CONNECTED) continue;
+			waitingClients.push(newgame->clients[i]);
+		}
+		return;
+	}
+	inc(runningGamesCounter);
+	if(!fork()){
+		game = newgame;
+		run_game();
+	}
+	return;
+}
+
+
+bool init_game(Game* newgame){
+	int i = 0;
+	char ch = 'a';
+	for(int i = 0; i < NUM_COLORS; ++i){
+		Client* client = newgame->clients[i];
+		newgame->clients[i]->color = i;
+		if(!smart_write(client->socket, (char*)&i, sizeof(int)) // write client color
+				|| !smart_write(client->socket, (char*)&(newgame->id), sizeof(uint64_t))){ // write client game id
+			set_client_connection_status(client, DEAD);
+			std::cout << "Client #" << client->id << " disconnected\n";
+			ch = 'q';
+		}
+	}
+	for(int i = 0; i < NUM_COLORS; ++i){
+		Client* client = newgame->clients[i];
+		if(!smart_write(client->socket, &ch, 1)) // write client game go-ahead
+			set_client_connection_status(client, DEAD);	
+	}
+	return (ch == 'a');
+}
+
+///////////////////// RUN GAME ///////////////////////////////////////////////////////////////////////////
+
+void delete_junk(){
+	delete ongoingGames;
+	delete connectedClients;
+	cleanGames.join();
+	cleanClients.join();
+}
+
+
+void run_game(){	
+	std::cout << "Game #" << game->id << " started\n";
+	
+	delete_junk();
+	flag = create_flag();
+	std::thread tickThread(tick);
+
+	placement_phase();
+	//int phaseTime = 0;
+
+	sec_sleep(1); // for testing
+	set_flag(flag->movementPhase, true);
+
+	while(1){
+		int exitCode = game_status_check();
+		if(exitCode > -1){
+			std::cout << "Game #" << game->id << " shuting down...\n";
+			delete_flag(flag);
+			tickThread.join();
+			dec(runningGamesCounter);
+			do{ sec_sleep(0.1); }
+			while(check_flag(*killFlag));
+			sec_sleep(2.0);
+			std::cout << "Game #" << game->id << " shutdown.\n";
+			exit(exitCode);
+		}
+		
+
+// 		if(phaseTime > PHASE_TIME_LIMIT){
+// 			set_flag(flag->movementPhase, !check_flag(flag->movementPhase));
+// 		}
+
+ 		sec_sleep(1);
+// 		+phaseTime;
+
+	}
+}
+
+
+int game_status_check(){
+	if(check_flag(*killFlag)){
+		set_game_status(game, DEAD);
+		return SIGINT;
+	}
+	if(check_flag(flag->shutdown)){
+		set_game_status(game, DEAD);
+		return 0;
+	}
+	if(check_flag(flag->disconnect)){
+		set_game_status(game, DISCONNECTED);
+		return 1;	
+	}
+	return -1;
+}
+
+
+///////////////////// TICK ///////////////////////////////////////////////////////////////////////////////
+
+void tick(){
+	std::cout << "Game #" << game->id << " tick started.\n";
+	while(1){
+		bool dead = check_flag(*killFlag) || check_flag(flag->shutdown);
+		bool connected = !check_flag(flag->disconnect);
+		bool check;
+
+		char ch;
+		for(int i = 0; i < NUM_COLORS; ++i){
+			check = smart_read(game->clients[i]->tickSocket, &ch, 1);
+			if(!check) set_client_connection_status(game->clients[i], DISCONNECTED);
+			connected = connected && check;
+		}
+
+		//if(!check_flag(flag->movementPhase) || dead || !connected){
+			if(dead) ch = 'x'; 
+			else if(!connected) ch = 'd';
+			else ch = 'a';		
+			for(int i = 0; i < game->clients.size(); ++i){
+				check = smart_write(game->clients[i]->tickSocket, &ch, 1);
+				if(!check) set_client_connection_status(game->clients[i], DISCONNECTED);
+				connected = connected && check;
+			}
+			
+			if(dead){
+				break;
+			}
+			if(!connected){
+				set_flag(flag->disconnect, true);
+				break;
+			}
+		//}
+		// else{
+		// 	std::shuffle(std::begin(game->clients), std::end(game->clients), rng);
+
+		// 	ch = 'U';
+		// 	smart_write(game->clients.at(0)->tickSocket, &ch, 1);
+		// 	int size;
+		// 	int* msg;
+		// 	smart_read(game->clients.at(0)->socket, (char*) &size, sizeof(int));
+		// 	smart_read(game->clients.at(0)->socket, (char*) msg, (size-1)*sizeof(int));
+
+		// 	std::cout << "U read done: size: ";
+		// 	print_message(&size, 1);
+		// 	std::cout << "msg: ";
+		// 	print_message(msg, size-1);
+
+		// 	ch = 'u';
+		// 	smart_write(game->clients.at(1)->tickSocket, &ch, 1);
+
+		// 	smart_write(game->clients.at(1)->socket, (char*) &size, sizeof(int));
+		// 	smart_write(game->clients.at(1)->socket, (char*) msg, (size-1)*sizeof(int));
+
+		// 	std::cout << "u write done\n";
+
+		// 	smart_read(game->clients.at(1)->socket, (char*) &size, sizeof(int));
+		// 	smart_read(game->clients.at(1)->socket, (char*) msg, (size-1)*sizeof(int));
+
+		// 	std::cout << "u read done\n";
+		// 	print_message(msg, size-1);
+
+		// 	smart_write(game->clients.at(0)->socket, (char*) &size, sizeof(int));
+		// 	smart_write(game->clients.at(0)->socket, (char*) msg, (size-1)*sizeof(int));
+
+		// 	std::cout << "U write done\n";
+		// }	
+		
+	
+		sec_sleep(0.5);
+	}
+	std::cout << "Game #" << game->id << " tick thread shutdown.\n";
+}
+
+
+void update(){
+	std::cout << "Update: " << check_flag(flag->update) << "\n";
+	set_flag(flag->update, false);
+}
+
+
+
+
+///////////////////// GAME ///////////////////////////////////////////////////////////////////////////////
+
+Game* create_game(){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	Game* g = (Game*) mmap(NULL, sizeof(Game), prot, opts, -1, 0);
+	g->id = ++nextGameId;
+	return g;
+}
+
+void set_game_status(Game* g, int status){
+	g->status.store(status, std::memory_order_release);
+	if(status == DEAD) signal_cleanGames.release();
+}
+
+int check_game_status(Game* g){
+	return g->status.load(std::memory_order_acquire);
+}
+
+void delete_game(Game* g){
+	munmap(g, sizeof(Game));
+}
+
+
+///////////////////// CLIENT /////////////////////////////////////////////////////////////////////////////
+
+Client* create_client(int sock, int ticksock){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	Client* c = (Client*) mmap(NULL, sizeof(Client), prot, opts, -1, 0);
+	c->id = ++nextClientId;
+	c->socket = create_smartsock(sock);
+	c->tickSocket = create_smartsock(ticksock);
+	return c;
+}
+
+
+void set_client_connection_status(Client* c, int status){
+	c->connectionStatus.store(status, std::memory_order_release);
+	if(status == DEAD) signal_cleanClients.release();
+}
+
+int check_client_connection_status(Client* c){
+	return c->connectionStatus.load(std::memory_order_acquire);
+}
+
+void set_client_victory_status(Client* c, int status){
+	c->victoryStatus.store(status, std::memory_order_release);
+}
+
+int check_client_victory_status(Client* c){
+	return c->victoryStatus.load(std::memory_order_acquire);
+}
+
+void delete_client(Client* c){
+	delete_smartsock(c->socket);
+	delete_smartsock(c->tickSocket);
+	munmap(c, sizeof(Client));
+}
+
+
+///////////////////// SMART SOCK /////////////////////////////////////////////////////////////////////////
+
+Smartsock* create_smartsock(int sock){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	Smartsock* s = (Smartsock*) mmap(NULL, sizeof(Smartsock), prot, opts, -1, 0);
+	int fs = fcntl(sock, F_GETFL);
+	fcntl(sock, F_SETFL, fs | O_NONBLOCK);
+	s->socket = sock;
+	s->sockpoll[0].fd = sock;
+	s->sockpoll[0].events = POLLIN | POLLOUT | POLLRDHUP;
+	return s;
+}
+
+bool check_smartsock(Smartsock* s){
+	int ret = poll(s->sockpoll, 1, -1);
+	if(!ret) return false;
+	if(s->sockpoll[0].revents & (POLLHUP | POLLRDHUP | POLLERR | POLLNVAL))
+		return false;
+	return true;
+}
+
+void delete_smartsock(Smartsock* s){
+	close(s->socket);
+	munmap(s, sizeof(Smartsock));	
+}
+
+
+bool smart_read(Smartsock* sock, char* buff, int len){
+	sock->sockpoll[0].events = POLLIN | POLLRDHUP | POLLNVAL;
+	ssize_t bytes;
+	if(!check_smartsock(sock)) return false;
+	while(len > 0){
+		bytes = read(sock->socket, buff, len);
+		if(bytes < 0) return false;
+		buff += bytes;
+		len -= bytes;
+	}
+	return true;
+}
+
+bool smart_write(Smartsock* sock, char* buff, int len){
+	sock->sockpoll[0].events = POLLOUT | POLLRDHUP | POLLNVAL;
+	ssize_t bytes;
+	if(!check_smartsock(sock)) return false;
+	while(len > 0){
+		bytes = write(sock->socket, buff, len);
+		if(bytes < 0) return false;
+		buff += bytes;
+		len -= bytes;
+	}
+	return true;
+}
+///////////////////// FLAG ///////////////////////////////////////////////////////////////////////////////
+
+Flag* create_flag(){
+	int prot = PROT_READ | PROT_WRITE;
+	int opts = MAP_SHARED | MAP_ANONYMOUS;
+	Flag* f = (Flag*) mmap(NULL, sizeof(Flag), prot, opts, -1, 0);
+	return f;
+}
+
+bool check_flag(std::atomic<bool>& flag){
+	return flag.load(std::memory_order_acquire);
+}
+
+void set_flag(std::atomic<bool>& flag, bool setval){
+	flag.store(setval, std::memory_order_release);
+}
+
+void delete_flag(Flag* f){
+	munmap(f, sizeof(Flag));
+}
+
+
+///////////////////// SOCKETS ////////////////////////////////////////////////////////////////////////////
+
+struct sockaddr_in get_socket_addr(int port){
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	return(addr);
+}
+
+int get_server_socket(int port){
+	int s = socket(AF_INET, SOCK_STREAM, 0);
+	if(s == -1) std::cerr << "Socket creation failed\n";
+	int one = 1;
+	if(setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int)))
+		std::cerr <<  "Set socket options failed\n";
+	struct sockaddr_in servAddr = get_socket_addr(port);
+	if (bind(s, (struct sockaddr*) &servAddr, sizeof(servAddr)) < 0)
+		std::cerr <<  "Bind failed " << errno << " " << strerror(errno) << "\n";
+	return(s);
+}
+
+void start_listen(int* sock, int port){
+	*sock = get_server_socket(port);
+	if(listen(*sock, 128)) std::cerr << "ERROR: Listen failed\n";
+}
+
+
+///////////////////// IO /////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+///////////////////// CONTAINERS /////////////////////////////////////////////////////////////////////////
+
+
+Game* find_game(uint64_t id){
+	Game* g;
+	sem_ongoingGames.acquire();
+	try{
+		g = ongoingGames->at(id);
+	}
+	catch(...){
+		sem_ongoingGames.release();
+		return NULL;
+	}
+	sem_ongoingGames.release();
+	return g;
+}
+
+
+Client* find_client(uint64_t id){
+	Client* c;
+	sem_connectedClients.acquire();
+	try{
+		c = connectedClients->at(id);	
+	}
+	catch(...){
+		sem_connectedClients.release();
+		return NULL;
+	}
+	sem_connectedClients.release();
+	return c;
+}
+
+
+
+
+///////////////////// GARBAGE ////////////////////////////////////////////////////////////////////////////
+
+void clean_games(){
+	while(1){
+		signal_cleanGames.acquire();
+		if(check_flag(*killFlag)) break;
+		std::cout << "Deleting dead games...\n";
+		sem_ongoingGames.acquire();
+		std::unordered_map<uint64_t, Game*>* temp = new std::unordered_map<uint64_t, Game*>;
+		for (const auto& [id, g] : *ongoingGames) {
+			if(check_game_status(g) == DEAD) delete_game(g);
+			else temp->insert({id, g});
+		}
+		delete ongoingGames;
+		ongoingGames = temp;
+		sem_ongoingGames.release();
+	}
+	sem_ongoingGames.acquire();
+	for (const auto& [id, g] : *ongoingGames) delete_game(g);
+	delete(ongoingGames);
+	std::cout << "Clean games thread shutdown\n";
+}
+
+void clean_clients(){
+	while(1){
+		signal_cleanClients.acquire();	
+		if(check_flag(*killFlag)) break;
+		std::cout << "Deleting dead clients...\n";
+		sem_connectedClients.acquire();
+		std::unordered_map<uint64_t, Client*>* temp = new std::unordered_map<uint64_t, Client*>;
+		for (const auto& [id, c] : *connectedClients) {
+			if(check_client_connection_status(c) == DEAD) delete_client(c);
+			else temp->insert({id, c});
+		}
+		delete connectedClients;
+		connectedClients = temp;
+		sem_connectedClients.release();
+	}
+	sem_connectedClients.acquire();
+	for (const auto& [id, c] : *connectedClients) delete_client(c);
+	delete(connectedClients);
+	std::cout << "Clean clients thread shutdown.\n";
+}
+
+
+
+///////////////////// UTILS //////////////////////////////////////////////////////////////////////////////
+
+void sec_sleep(float period){
+	struct timespec t1, t2;
+	t1.tv_sec = (period >= 1) ? (int) period  : 0;
+	t1.tv_nsec = (unsigned long long) ((period - ((int) period))*1000000000ull);
+	nanosleep(&t1, &t2);
+}
+
+
+void print_message(int* m, int size){
+	for(int i = 0; i < size; ++i){
+		printf("%d ", m[i]);
+	}
+	printf("\n");
+}
+
+
+
+/////////////////////////// GAME PHASES ////////////////////////////
+
+void placement_phase(){
+	std::vector<int*> msgs;
+	std::vector<int*> sizes;
+	std::shuffle(std::begin(game->clients), std::end(game->clients), rng);
+	for(Client* c : game->clients){
+		int* size = new int;
+		smart_read(c->socket, (char*)size, sizeof(int));
+		int* msg = new int[*size];
+		smart_read(c->socket, (char*)msg, ((*size)-1)*sizeof(int));
+		std::cout << "******" << *size << std::endl;
+		sizes.push_back(size);
+		msgs.push_back(msg);
+		
+	}
+	for(Client* c : game->clients){
+		for(int i = 0; i < NUM_COLORS; ++i){
+			if(c->color == i){
+				smart_write(c->socket, (char*) sizes[i], sizeof(int));
+				smart_write(c->socket, (char*) msgs[i], (*(sizes.at(i))-1)*sizeof(int));
+				delete sizes[i];
+				delete msgs[i];
+			}
+		}
+	}
+	
+	std::cout << "Placement phase completed\n";
+}
+
+
+/////////////////////////// PROCESS MESSAGES ///////////////////////
+
+/*
+void process_message(int* msg){
+	switch(msg[C_TYPE]){
+	 	case MSG_TYPE_INITIAL_PLACEMENT:
+			process_initial_placement_message(msg);
+			return;
+		default:
+			return;
+	}
+}
+
+
+void process_initial_placement_message(int* msg){
+	write_message(clients[!(msg[C_COLOR])]->socket, msg);
+}
+*/
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+/*
+int* read_message(int sock){
+	char csize[sizeof(int)];
+	smart_read(sock, csize, sizeof(int));
+	int size = *((int*) csize);
+	char* msg = new char[size*sizeof(int)]();
+	((int*)msg)[S_SIZE] = size;
+	smart_read(sock, msg+sizeof(int), (size-1)*sizeof(int));
+	return (int*) msg; 
+}
+
+
+void write_message(int sock, int* msg){
+	smart_write(sock, (char*) msg, sizeof(int));
+	smart_write(sock, (char*) (msg+1), (msg[S_SIZE]-1)*sizeof(int));
+	delete msg;
+}
+*/
+
+
+
+
+/*
+void game(){
+	std::cout << "Game " << getpid() << " started.\n";
+	int epollfd;
+	int readyfds;
+	struct epoll_event event;
+	struct epoll_event eventlist[NUM_COLORS];
+	init_epoll(&epollfd, &event);
+	flags = init_flags();
+
+	write_game_ready();
+	start_tick();
+	placement_phase();
+
+	while(!check_flag(flags->shutdown)){
+		if(check_flag(flags->kill)) game_killed();
+		if(check_flag(flags->update)) update();
+		if(check_flag(flags->disconnect)){
+			sec_sleep(0.1);
+			continue;
+		}
+
+		readyfds = epoll_wait(epollfd, eventlist, NUM_COLORS, -1);
+		if(readyfds < 0) continue;
+
+		for(int i = 0; i < readyfds; ++i){
+			int* msg = read_message(eventlist[i].data.fd);
+			process_message(msg);
+
+			for(Client* c : clients){
+				if(eventlist[i].data.fd == c->socket){
+					int* msg = read_message(c->socket);
+					process_message(msg);
+				}
+			}
+		}
+	}
+	shutdown();
+}
+
+
+void shutdown(){
+	free_alloced();
+	std::cout << "Game " << getpid() << " shutdown.\n";
+	exit(0);
+}
+
+
+void game_killed(){
+	free_alloced();
+	std::cout << "Game " << getpid() << " killed by SIGINT.\n";
+	exit(SIGINT);
+}
+
+
+
+/////////////////////////// WRITE MESSAGES /////////////////////////
+
+void write_response(Client* c, int errorType){		
+	int r[S_RESPONSE_SIZE];
+	r[S_TYPE] = MSG_TYPE_RESPONSE;
+	r[S_SIZE] = S_RESPONSE_SIZE;
+	r[S_ERROR_TYPE] = errorType;
+	write_message(c->socket, r);
+}
+
+
+void write_game_ready(){
+	for(Client* c : clients){
+		int* msg = new int[S_STARTGAME_SIZE]();
+		msg[S_SIZE] = S_STARTGAME_SIZE;
+		msg[S_TYPE] = MSG_TYPE_STARTGAME;
+		msg[S_CLIENT_COLOR] = c->color;
+		write_message(c->socket, msg);
+	}
+}
+
+
+/////////////////////////// TICK ///////////////////////////////////
+
+
+
+
+
+/////////////////////////// IO /////////////////////////////////////
+
+void simple_read(int sock, int size){
+	
+}
+
+
+
+
+/////////////////////////// INITS //////////////////////////////////
+
+
+
+
+void init_game(Client* client){
+	std::cout << client->addr.sin_port << " CONNECTED\n";
+	waitingClients.push(client);
+	if(waitingClients.size() >= 2){
+
+		
+
+		clients.push_back(waitingClients.front());
+		waitingClients.pop();
+		clients.push_back(waitingClients.front());
+		waitingClients.pop();
+		int pid;
+		if(!(pid = fork())){
+			game();
+		}
+		clients.clear();
+	}	
+}
+
+
+void init_epoll(int* epollfd, struct epoll_event* event){
+	*epollfd = epoll_create1(0);
+    if (0 > *epollfd){
+		std::cerr << "epoll_create1() failed\n";	
+		exit(1);
+	}
+	event->events = EPOLLIN | EPOLLRDHUP;
+	int i = 0;
+	for(Client* c : clients){
+		c->color = i++;
+		event->data.fd = c->socket;
+		if(epoll_ctl(*epollfd, EPOLL_CTL_ADD, c->socket, event)){
+			std::cerr << "epoll_ctl() failed\n";
+			exit(1);
+		}
+	}
+}
+
+
+
+
+
+
+
+
+///////////////////// UTILS /////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+void print_flags(){
+	std::cout << "falgs: " << flags->disconnect << " " 
+		<< flags->shutdown << " " << flags->update << "\n";
+}
+
+*/
+
+
+
+
+#include "filemap.h"
+
+char* type;
+char* path;
+size_t unitSize;
+
+int ifd;
+int ofd;
+int mapfd;
+int logfd;
+size_t unitCount;
+size_t fileSize;
+offsets used;
+offsets unused;
+
+void logwr(char* ch, size_t len){
+	write(logfd, ch, len);
+	write(logfd, "\n", 1);
+}
+
+
+#define ifd STDIN_FILENO
+#define ofd STDOUT_FILENO
+
+int main(int c, char** v){
+	init(v);
+	//print_filemap_meta();
+	//if(TEST) test();
+
+	int i = 0;	
+	while(1){
+		char ch;
+		read(ifd, &ch, 1);
+		if(ch == 'q') break;
+		process_message(ch);
+		++i;
+	}
+	free_mem();
+	logwr("Closing...", 10);
+	
+	return 0;
+}
+
+
+void process_message(char c){
+	logwr(&c, 1);
+	switch(c){
+		case 'i' :{
+			char msg[unitSize];
+			read(ifd, msg, unitSize);
+			off_t offset = fm_insert(msg);
+			write(ofd, (char*) &offset, sizeof(off_t));
+			break;
+		}
+		case 'd' :{
+			off_t offset;
+			read(ifd, (char*) &offset, sizeof(off_t));
+			fm_delete(offset);
+			break;
+		}
+		case 'l':{
+			off_t offset;
+			read(ifd, (char*) &offset, sizeof(off_t));
+			char unit[unitSize];
+			fm_load(offset, unit);
+			write(ofd, unit, unitSize);
+			break;
+		}
+		case 'q':{
+			free_mem();
+
+		}
+		default:
+	}
+}
+
+
+void init(char** v){
+	int i = 0;
+	type = v[1];
+	path = v[2];
+	unitSize =  atoi(v[3]);
+	size_t unitCount = 0;
+	size_t fileSize = 0;
+	init_offsets(&used);
+	init_offsets(&unused);
+	unitCount = 0;
+
+	mapfd = open(path, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+	if(mapfd < 0){
+		write(logfd, "FCERROR\n", 8);
+		exit(mapfd);
+	}
+	logfd = open("log", O_CREAT | O_RDWR | O_TRUNC, S_IRUSR | S_IWUSR);
+	if(mapfd < 0){
+		write(logfd, "FCERROR\n", 8);
+		exit(mapfd);
+	}
+}
+
+void init_offsets(offsets* of){
+	of->arr = (off_t*) malloc(DEFAULT_OFFSETS_SIZE*sizeof(off_t));
+	of->size = 0;
+	of->end = DEFAULT_OFFSETS_SIZE;
+} 
+
+
+
+void fm_load(off_t offset, char* ret){
+	size_t i = 0;
+	for(; i < used.size; ++i){
+		if(offset == used.arr[i]) break;
+	}
+	if(i == used.size) ret = NULL;
+	lseek(mapfd, offset*unitSize, SEEK_SET);
+	read(mapfd, ret, unitSize);
+	
+}
+
+
+off_t fm_insert(char* unit){
+	off_t offset = get_insert_offset();
+	lseek(mapfd, offset*unitSize, SEEK_SET);
+	write(mapfd, unit, unitSize);
+	++unitCount;
+	return offset;
+}
+
+off_t get_insert_offset(){
+
+	if(!used.size){
+		used.arr[0] = 0;
+		++(used.size);
+		return 0;
+	}
+
+	resize_offsets(&used);
+
+	int offset = used.size;
+	if(unused.size){
+		offset = unused.arr[(unused.size)-1];
+		--(unused.size);
+	}
+
+	used.arr[used.size] = offset;
+	++(used.size);
+
+	return offset;
+}
+
+
+
+
+
+char fm_delete(off_t offset){
+	if(offset >= used.size) return 0;
+	ptrdiff_t i = 0;
+	for(; (i >= 0) && (i < used.size); ++i){
+		if(used.arr[i] == offset) break;
+	}
+	if(i == used.size) return 0;
+	
+	if(i != (used.size-1))
+		for(; i < used.size; ++i) *(used.arr+i) = *(used.arr+i+1);
+	--(used.size);
+
+	lseek(mapfd, offset*unitSize, SEEK_SET);
+	char* zeros[unitSize];
+	memset(zeros, 0, unitSize);
+	write(mapfd, zeros, unitSize);
+	resize_offsets(&unused);
+	unused.arr[unused.size] = offset;
+	++(unused.size);
+	--unitCount;
+
+	return 1;
+}
+
+
+
+
+void resize_offsets(offsets* of){
+	if(of->size < DEFAULT_OFFSETS_SIZE) return;
+	size_t newEnd = 0;
+	if(of->size == of->end) newEnd = (of->end*2);
+	else if(of->size < (of->end/4)) newEnd = (of->end/2);
+	if(!newEnd) return;
+	newEnd = (newEnd >= DEFAULT_OFFSETS_SIZE) ? newEnd : DEFAULT_OFFSETS_SIZE;
+	off_t* temp = (off_t*) malloc(newEnd*sizeof(off_t));
+	memcpy(temp, of, (newEnd*sizeof(off_t)));
+	free(of->arr);
+	of->arr = temp;
+	of->end = newEnd;
+}
+
+
+void free_mem(){
+	if(used.arr) free(used.arr);
+	if(unused.arr) free(unused.arr);
+}
+
+
+
+
+
+void print_filemap_meta(){
+	printf("ifd: %d\n", ifd);
+	printf("ofd: %d\n", ofd);
+	printf("type: %s\n", type);
+	printf("path: %s\n", path);
+	printf("unitSize: %d\n", unitSize);
+	printf("mapfd: %d\n", mapfd);
+	printf("unitCount: %d\n", unitCount);
+}
+
+void print_used(){
+	printf("\tused (size %d): ", used.size);
+	for(int i = 0; i < used.size; ++i){
+		printf("%d ", used.arr[i]);
+	}
+	printf("\n");
+}
+
+void print_unused(){
+	printf("\tunused (size %d): ", unused.size);
+	for(int i = 0; i < unused.size; ++i){
+		printf("%d ", unused.arr[i]);
+	}
+	printf("\n");
+}
+
+void test(){
+	print_filemap_meta();
+
+	printf("insert at 0 ---> \n");
+	char* teststr = strdup("TEST1");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+
+	printf("insert at 1 --->\n");
+	teststr = strdup("TEST2");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+	
+	printf("insert at 2 --->\n");
+	teststr = strdup("TEST3");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+
+	printf("insert at 3 --->\n");
+	teststr = strdup("TEST4");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+
+	printf("delete 2 --->\n");
+	fm_delete(2);
+	print_unused();
+	print_used();
+	
+	printf("insert at 2 --->\n");
+	teststr = strdup("TEST5");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+
+	char c = fm_delete(used.size);
+	printf("delete used.size (worked: %d) --->\n", c);
+	print_unused();
+	print_used();
+
+	printf("delete %d --->\n", used.arr[used.size-1]);
+	fm_delete(used.arr[used.size-1]);
+	print_unused();
+	print_used();
+
+	printf("insert at %d --->\n", unused.arr[unused.size-1]);
+	teststr = strdup("TEST6");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+
+	printf("delete 0 --->\n");
+	fm_delete(0);
+	print_unused();
+	print_used();
+
+	printf("insert at 0 --->\n");
+	teststr = strdup("TEST7");
+	fm_insert(teststr);
+	print_unused();
+	print_used();
+	
+	char t[unitSize];
+	fm_load(1, t);
+	printf("load from 1: ");
+	for(int i = 0; i < unitSize; ++i){
+		printf("%c", t[i]);
+	}
+	printf("\n");
+
+
+	free_mem();
+}
+
+
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <string.h>
+
+int main(){
+	int ifd[2]; // write
+	int ofd[2]; // read
+
+	pipe(ifd);
+	pipe(ofd);
+	
+	
+	printf("HERE\n");
+
+	if(!fork()){
+		dup2(ifd[0], STDIN_FILENO);
+		dup2(ofd[1], STDOUT_FILENO);
+
+		close(ifd[1]);
+		char* args[] = {"runtest", "client", "testfile", "5", NULL};
+		execvp("/home/john/homework/cs320/rules/server/runtest", args);
+	}
+
+	close(ifd[0]);
+	close(ofd[1]);
+	
+	off_t offset;
+	char ch = 'i';
+	write(ifd[1], &ch, 1);
+	write(ifd[1], "test1", 5);
+	read(ofd[0], (char*) &offset, sizeof(off_t));
+	printf("offset: %d\n", offset);
+
+
+	offset = 0;
+	char ret[5];
+	write(ifd[1], "l", 1);
+	write(ifd[1], (char*) &offset, sizeof(off_t));
+	read(ofd[0], ret, 5);
+	for(int i = 0; i < 5; ++i){
+		printf("%c", ret[i]);
+	}
+	printf("\n");
+
+	write(ifd[1], &ch, 1);
+	write(ifd[1], "test2", 5);
+	read(ofd[0], (char*) &offset, sizeof(off_t));
+	printf("offset: %d\n", offset);
+
+	write(ifd[1], &ch, 1);
+	write(ifd[1], "test3", 5);
+	read(ofd[0], (char*) &offset, sizeof(off_t));
+	printf("offset: %d\n", offset);
+	
+	
+	write(ifd[1], &ch, 1);
+	write(ifd[1], "test4", 5);
+	read(ofd[0], (char*) &offset, sizeof(off_t));
+	printf("offset: %d\n", offset);
+
+	write(ifd[1], &ch, 1);
+	write(ifd[1], "test5", 5);
+	read(ofd[0], (char*) &offset, sizeof(off_t));
+	printf("offset: %d\n", offset);
+
+	offset = 2;
+	write(ifd[1], "d", 1);
+	write(ifd[1], (char*) &offset, sizeof(off_t));
+	printf("delete 2\n");
+
+	write(ifd[1], &ch, 1);
+	write(ifd[1], "test6", 5);
+	read(ofd[0], (char*) &offset, sizeof(off_t));
+	printf("offset: %d\n", offset);
+
+	offset = 2;
+	write(ifd[1], "d", 1);
+	write(ifd[1], (char*) &offset, sizeof(off_t));
+	printf("delete 2\n");
+
+	write(ifd[1], "q", 1);
+
+	printf("\nDONE\n");
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <stddef.h>
+
+#define DEFAULT_OFFSETS_SIZE 10
+#define TEST 1
+
+
+typedef struct _offsets{
+	off_t* arr;
+	size_t size;
+	size_t end;
+} offsets;
+
+
+
+void process_message(char c);
+
+
+void init_offsets(offsets* of);
+void fm_load(off_t offset, char* ret);
+off_t fm_insert(char* unit);
+char fm_delete(off_t offset);
+off_t get_insert_offset();
+void resize_offsets(offsets* of);
+void free_mem();
+void test();
+void init(char** v);
+void print_filemap_meta();
+void print_used();
+void print_unused();
+
+
+
+
+
+
+// server.h
+
+
+#ifndef _SERVER_H
+#define _SERVER_H
+
+#include <stack>
+
+#include "../default.h"
+#include "../coms.h"
+//#include "board.h"
+//#include "piece.h"
+//#include "heading.h"
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <array>
+#include <unistd.h>
+#include <netdb.h>
+#include <fcntl.h>
+#include <dirent.h>
+#include <string.h>
+#include <errno.h>
+#include <ctype.h>
+#include <algorithm>
+#include <random>
+#include <poll.h>
+#include <mutex>
+#include <atomic>
+#include <csignal>
+#include <errno.h>
+#include <thread>
+#include <queue>
+#include <condition_variable>
+#include <unordered_map>
+#include <semaphore>
+#include <sys/mman.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/epoll.h>
+
+
+
+enum STATUS 
+{
+	READY,
+	CONNECTED,
+	DISCONNECTED,
+	DEAD
+};
+
+enum VICTORY_STATUS
+{
+	PLAYING,
+	WON,
+	DRAW,
+	LOST
+};
+
+
+// smartsock
+typedef struct _smartsock{
+	int socket;
+	struct pollfd sockpoll[1];
+} Smartsock;
+Smartsock* create_smartsock(int sock);
+bool check_smartsock(Smartsock* sock);
+void delete_smartsock(Smartsock* s);
+bool smart_read(Smartsock* sock, char* buff, int len);
+bool smart_write(Smartsock* sock, char* buff, int len);
+
+
+// client
+typedef struct _client{
+	std::atomic<int> connectionStatus{CONNECTED};
+	std::atomic<int> victoryStatus{PLAYING};
+	uint64_t id;
+	uint64_t gameId;
+	int color;
+	Smartsock* socket;
+	Smartsock* tickSocket;
+} Client;
+Client* create_client(int sock, int ticksock);
+void set_client_connection_status(Client* c, int status);
+int check_client_connection_status(Client* c);
+void set_client_victory_status(Client* c, int status);
+int check_client_victory_status(Client* c);
+void delete_client(Client* c);
+
+
+// game
+typedef struct _game{
+	std::atomic<int> status{CONNECTED};
+	uint64_t id;
+	std::array<Client*, NUM_COLORS> clients;	
+} Game;
+Game* create_game();
+void set_game_status(Game* g, int status);
+int check_game_status(Game* g);
+void delete_game(Game* g);
+
+
+// flag
+typedef struct _flag{
+	std::atomic<bool> shutdown{false};
+	std::atomic<bool> disconnect{false};
+	std::atomic<bool> movementPhase{false};
+	std::atomic<bool> update{false};
+} Flag;
+Flag* create_flag();
+bool check_flag(std::atomic<bool>& flag);
+void set_flag(std::atomic<bool>& flag, bool setval);
+void delete_flag(Flag* f);
+
+
+
+// main
+int main();
+void get_client_request(Client* client);
+void process_new_game_request(Client* client);
+Client* get_connection(sockaddr_in* addr, socklen_t* len);
+
+
+// initialize game
+void new_game();
+bool init_game(Game* newgame);
+
+void clean_ongoingGames();
+void clean_connectedClients();
+
+
+// run game
+void run_game();
+int game_status_check();
+
+
+// tick
+void start_tick();
+void tick();
+void update();
+
+
+// sockets
+struct sockaddr_in get_socket_addr(int port);
+int get_server_socket(int port);
+void start_listen(int* sock, int port);
+
+
+// io
+
+
+// containers 
+void ongoingGames_insert(Game* g);
+Game* ongoingGames_at(uint64_t id);
+void connectedClients_insert(Client* c);
+Client* connectedClients_at(uint64_t id);
+Client* readyClients_pop();
+void readyClients_push(Client* c);
+
+// garbage
+void signal_clean();
+void clean_games();
+void clean_clients();
+
+
+// utils
+void sec_sleep(float period);
+void print_message(int* msg, int size);
+
+//game phases
+void placement_phase();
+
+
+// process message
+void process_message(int* msg);
+void process_initial_placement_message(int* msg);
+
+
+#endif
+default:
+	g++ -std=c++20 -o run server.cpp
+#!/bin/bash
+
+if test -f testfile; then
+	rm testfile;
+fi
+
+gcc -o startest fmtest.c
+gcc -o runtest filemap.c
+
+
+#./runtest "client" "testfile" 5
+
+#rm testfile;
+
+./startest
