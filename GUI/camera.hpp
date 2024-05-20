@@ -5,7 +5,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include "picture.hpp"
-#include "tile.hpp"
 
 
 // Class to manage the display for each player.
