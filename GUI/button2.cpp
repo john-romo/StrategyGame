@@ -91,7 +91,7 @@ void Button2::free_button_pictures(){
 // but can be useful for specific cases.
 
 // xmod and ymod refer to a specific spot on the screen that the button should appear.
-// This is useful for buttons which appear on the map. (constantly changing position)
+// This is useful for buttons which appear on the map. (these constantly change position)
 // note: setting xmod or ymod will permanently change the position of the picture being rendered.
 
 // setting use_default_picture to false can force a certain picture to display

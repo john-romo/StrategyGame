@@ -1,5 +1,5 @@
 // main.cpp
-// new library required: sudo apt-get install libsdl2-ttf-dev
+// new library for fonts required: sudo apt-get install libsdl2-ttf-dev
 
 #include <stdlib.h>
 
@@ -65,6 +65,7 @@ int main(int, char**){
     TTF_Font* fontsmall = TTF_OpenFont("Ubuntu-B.ttf", 16);
     
     // Making arrays of Pictures containing text to render to the screen
+    // (explanation is in the picture class)
     Picture* hpstatus[10];
     hpstatus[0] = new Picture (font, renderer, "0", 560, 80);
     hpstatus[1] = new Picture (font, renderer, "1", 560, 80);
@@ -163,7 +164,6 @@ int main(int, char**){
     bool left_pressed_prev = false;
     bool right_pressed_prev = false;
 
-    
     Camera test_camera;
 
     std::cout << "Hello World\n";
@@ -378,7 +378,9 @@ int main(int, char**){
                     int sqx = (mouse_rect.x / 32)+test_camera.current_x_pos; // position of x square clicked
                     int sqy = (mouse_rect.y / 32)+test_camera.current_y_pos; // position of y square clicked
                     Square* sq = get_square(sqx, sqy); // the square that was clicked
+                    // the one line commented under this one would limit movement to only visible squares.
                     //if(((color == 0 && sq->visibleWhite) || (color == 1 && sq->visibleBlack)) && sq->is_valid){
+
                     // if the piece belongs to the player, and the square is a valid spot to move, move the piece
                     if(sq->is_valid && sqx > 0 && sqy > 0 && sqx < HEIGHT && sqy < HEIGHT && current_selected_piece->color == color){
                         // this statement will block movement of greater than 6 squares in any direction.
