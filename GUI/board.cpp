@@ -130,6 +130,11 @@ void create_board(SDL_Renderer* renderer){
 	}
 }
 
+// This creates a "filled" board that creates Squares in all spaces,
+// (including outside the octogon). The dimensions will be HEIGHTxHEIGHT.
+// Invalid Squares (those outside the octogon) are marked by the
+// mark_valid_tiles function.
+
 void create_board_filled(SDL_Renderer* renderer){
 	for(int y = 0; y < HEIGHT; ++y){
 		for(int x = 0; x < HEIGHT; ++x){
@@ -137,16 +142,26 @@ void create_board_filled(SDL_Renderer* renderer){
 			Picture* p = get_square(x,y)->picture;
 			get_square(x,y)->picture = nullptr;
 			p->free_picture();
-			std::string type = "grass4";
+			std::string type = "grass4"; // this is the PNG name for the image.
 			
 			if((x+y)%2 == 1){
 				type = "grass4";
+			}else{
+				;
+				// this is now empty, but changing the "type" string
+				// in this block will create a checkerboard.
 			}
+			// Create and assign a picture to the square.
+			//std::cout << "going to free..." << std::endl;
+			delete get_square(x,y)->picture;
 			get_square(x,y)->picture = new Picture(renderer, type, 0, 0, 32, 32);
 			//std::cout << x << y << std::endl;
 		}
 	}
 }
+
+// This will mark tiles as "valid" if they are within the area
+// of the octogon.
 
 void mark_valid_tiles(SDL_Renderer* renderer){
 	for(int y = 0; y < DIAG - 1; ++y){
@@ -165,11 +180,14 @@ void mark_valid_tiles(SDL_Renderer* renderer){
 		}
 	}
 
+	// Tiles that are invalid (not within the octogon) will have its picture changed.
 	for(int y = 0; y < HEIGHT; ++y){
 		for(int x = 0; x < HEIGHT; ++x){
 			if(get_square(x,y)->is_valid == false){
-				get_square(x,y)->picture->free_picture();
-				get_square(x,y)->picture = new Picture(renderer, "rockdark", 0, 0, 32, 32);
+				get_square(x,y)->picture->free_picture(); // free the old picture
+				delete get_square(x,y)->picture;
+				// create and assign new picture. "rockdark" is the name of the PNG.
+				get_square(x,y)->picture = new Picture(renderer, "rockdark", 0,0,32,32); 
 			}
 		}
 	}
@@ -230,17 +248,22 @@ void print_visible_squares(){
 				printf("(%d, %d) -> vW: %d, vB: %d\n", s->x, s->y, s->visibleWhite, s->visibleBlack);
 			}
 			printf("\n");
-
 		}
 	}
 	printf("\n");
 }
 
-void camera_display(int current_x, int current_y,SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank){
+// The function that shows and updates the map every frame. 
+// Arguments current_x and current_y are provided by the Camera class
+// and this indicates where in the map the player is. (the square in the top left corner in the player's view.)
 
+
+void camera_display(int current_x, int current_y, SDL_Rect* mouse_pos, bool pressed, int color, Picture* blank){
+	// for every square in the player's view:
 	for(int y=current_y; y<current_y+15; y++){
         for(int x=current_x; x<current_x+20; x++){
 			Square* s = get_square(x,y);
+			// if the square is visible to this client, show the square
 			if((color == 1 && s->visibleBlack) || (color == 0 && s->visibleWhite) || s->is_valid == false){
 				s->render(x-current_x,y-current_y);
 				if(s->occupied){ // if there's a piece on this square, render that too
@@ -250,16 +273,19 @@ void camera_display(int current_x, int current_y,SDL_Rect* mouse_pos, bool press
 					}
 					s->piece->button->render(x-current_x,y-current_y, !(s->piece->is_selected));
 				}
-			}else{
+			}else{ // otherwise show a blank
 				blank->rect->x = (x-current_x)*32;
 				blank->rect->y = (y-current_y)*32;
 				SDL_RenderCopy(blank->renderer, blank->texture, NULL, blank->rect );
 			}
-			
         }
     }
 	return;
 }
+
+// Function for updating each client's board after the server sends over the 
+// new pieces placed. It goes through the board and checks for the newly added pieces. 
+// Then, it creates and assigns a button to each new piece so it can be seen.
 
 void update_board(SDL_Renderer* renderer){
 	for(int y = 0; y < HEIGHT; ++y){
@@ -275,8 +301,6 @@ void update_board(SDL_Renderer* renderer){
 					else if(s->piece->type == RIFLEMAN) s->piece->button = new Button2(renderer, "rifleman", 0,0,32,32);
 					else if(s->piece->type == SPECOPS) s->piece->button = new Button2(renderer, "specops", 0,0,32,32);
 					else if(s->piece->type == PARATROOPER) s->piece->button = new Button2(renderer, "paratrooper", 0,0,32,32);
-					
-				
 			}
 		}
 	}
