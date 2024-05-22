@@ -57,8 +57,12 @@ public:
 	bool airdrop();
 	bool reassign(int type);
 
+	// The button is the visual representation of the piece.
+	// Assigning a button was not added to the constructor, so
+	// it must be assigned one. To render a Piece,  
+
 	Button2* button = nullptr;
-	bool is_selected = false;
+	bool is_selected;
 
 private:
 	int get_distance(int x, int y);

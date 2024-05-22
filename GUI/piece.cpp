@@ -51,6 +51,7 @@ Piece::Piece(int _type, int _color) : type(_type), color(_color){
 	this->heading = *START_HEADINGS[_color]; 
 	this->square = NULL;
 	this->targetSquare = NULL;
+	this->is_selected = false;
 	pieces[_color].push_back(this);
 
 	std::string button_type = "pawn";

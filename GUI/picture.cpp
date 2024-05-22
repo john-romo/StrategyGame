@@ -1,10 +1,15 @@
 #include "picture.hpp"
 
+// Class to easily upload and render PNG images to a window. 
+// It ONLY works with PNGs.
 
 Picture::Picture(){
-
     return;
 }
+
+// This constructor takes a renderer pointer and a string name corresponding to 
+// three images that are expected to exist in the 'images' directory. 
+// Entering "examplename" for 
 
 Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int rect_y, int rect_w, int rect_h){
 
@@ -20,7 +25,6 @@ Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int 
     surface = IMG_Load(path_str);
     if(surface == NULL){
         std::cout << path_str;
-        std::cout << "nok\n";
         throw std::invalid_argument("Error creating Picture: Ensure a valid PNG exists.");
     }
     texture = SDL_CreateTextureFromSurface(renderer,surface);
@@ -33,7 +37,6 @@ Picture::Picture(SDL_Renderer* main_renderer, std::string name, int rect_x, int 
     r.y = rect_y;
     r.w = rect_w;
     r.h = rect_h;
-
     rect = &r;
 
     return;

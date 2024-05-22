@@ -8,13 +8,14 @@
 
 
 // Class to manage the display for each player.
+// It isn't really necessary, and could be replaced with
+// a couple of int variables and a separate function.
 
 class Camera{
     private:
         int num_x_tiles = 20;
         int num_y_tiles = 15;
         
-    
     public:
 
         //Tile* (*map)[100][100] = nullptr;
