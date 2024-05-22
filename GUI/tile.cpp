@@ -1,3 +1,5 @@
+// This class is no longer in use and can be removed. (Replaced by Square)
+
 #include "tile.hpp"
 
 Tile::Tile(int x_location, int y_location, Picture* tpicture){

@@ -8,6 +8,8 @@
 #include <iostream>
 #include <stdexcept>
 
+// This class is no longer in use and can be removed. (Replaced by Square)
+
 // A class to represent each "tile" on the map.
 
 class Tile{
